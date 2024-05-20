@@ -5,23 +5,23 @@
 
 #define USB_SPEED 115200
 
-#define CAM_PIN_PCLK 23
-#define CAM_PIN_XCLK 34
+#define CAM_PIN_PCLK 13
+#define CAM_PIN_XCLK 0
 
 #define CAM_PIN_SIOD 21
 #define CAM_PIN_SIOC 22
 
-#define CAM_PIN_D7 13
-#define CAM_PIN_D6 26
-#define CAM_PIN_D5 12
-#define CAM_PIN_D4 25
-#define CAM_PIN_D3 14
-#define CAM_PIN_D2 33
+#define CAM_PIN_D7 35
+#define CAM_PIN_D6 34
+#define CAM_PIN_D5 33
+#define CAM_PIN_D4 32
+#define CAM_PIN_D3 25
+#define CAM_PIN_D2 26
 #define CAM_PIN_D1 27
-#define CAM_PIN_D0 32
+#define CAM_PIN_D0 14
 
-#define CAM_PIN_VSYNC 19
-#define CAM_PIN_HREF 35
+#define CAM_PIN_VSYNC 12
+#define CAM_PIN_HREF 4
 
 OV7670 *camera;
 String endpoint = "http://192.168.1.163:8000/image";
