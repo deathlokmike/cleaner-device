@@ -1,7 +1,9 @@
-#include "OV7670.h"
 #include "wifi_config.h"
 #include <Arduino.h>
-#include <HTTPClient.h>
+#include <ArduinoWebsockets.h>
+#include <WiFi.h>
+
+using namespace websockets;
 
 #define USB_SPEED 115200
 
@@ -23,49 +25,124 @@
 #define CAM_PIN_VSYNC 12
 #define CAM_PIN_HREF 4
 
-OV7670 *camera;
-String endpoint = "http://192.168.1.163:8000/image";
+#define FRONT_ECHO_PIN 18
+#define FRONT_TRIG_PIN 19
+
+#define SIDE_ECHO_PIN 2
+#define SIDE_TRIG_PIN 15
+
+#define VNH_INA_PIN 5
+#define VNH_INB_PIN 17
+#define VNH_PWM_PIN 16
+
+#define SERVO_PWM_PIN 23
+
+const char *websocket_server = "ws://192.168.1.163:8000/ws";
+
+WebsocketsClient client;
+
+bool isRunning = false;
+bool isStopped = true;
+unsigned long previousMillis = 0;
+const long interval = 50; // Интервал для обновления данных
+
+void stopMachine() {
+  Serial.println("Machine stopped");
+  isStopped = true;
+}
+
+void connectToWebSocket() {
+  client.onMessage([](WebsocketsMessage message) {
+    String msg = message.data();
+    Serial.println("Message received: " + msg);
+
+    if (msg == "start") {
+      Serial.println("Received START signal");
+      isRunning = true; // Устанавливаем состояние работы
+      isStopped = false;
+    } else if (msg == "stop") {
+      Serial.println("Received STOP signal");
+      isRunning = false; // Устанавливаем состояние остановки
+      stopMachine(); // Останавливаем машину
+    } else if (msg == "check") {
+      Serial.println("Received CHECK signal");
+    }
+  });
+
+  client.onEvent([](WebsocketsEvent event, String data) {
+    if (event == WebsocketsEvent::ConnectionOpened) {
+      Serial.println("WebSocket connection opened");
+    } else if (event == WebsocketsEvent::ConnectionClosed) {
+      Serial.println("WebSocket connection closed, reconnecting...");
+      connectToWebSocket();
+    } else if (event == WebsocketsEvent::GotPing) {
+      Serial.println("Got a Ping!");
+    } else if (event == WebsocketsEvent::GotPong) {
+      Serial.println("Got a Pong!");
+    }
+  });
+
+  bool connected = client.connect(websocket_server);
+  if (connected) {
+    Serial.println("Connected to WebSocket server");
+  } else {
+    Serial.println("Failed to connect to WebSocket server, retrying...");
+    delay(5000);
+    connectToWebSocket();
+  }
+}
+
+void print_sensor_distance(uint8_t trig, uint8_t echo, String type) {
+  Serial.print("Distance ");
+  Serial.print(type);
+  Serial.print(": ");
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig, LOW);
+  long duration = pulseIn(echo, HIGH);
+  long distance = duration * 0.017;
+  Serial.println(String(distance));
+}
+
+void readSensorsAndDrive() {
+  print_sensor_distance(FRONT_TRIG_PIN, FRONT_ECHO_PIN, "front");
+  print_sensor_distance(SIDE_TRIG_PIN, SIDE_ECHO_PIN, "side");
+}
 
 void setup() {
-  Serial.begin(USB_SPEED);
+  Serial.begin(115200);
+  delay(10);
+  pinMode(FRONT_TRIG_PIN, OUTPUT);
+  pinMode(FRONT_ECHO_PIN, INPUT);
 
-  camera = new OV7670(OV7670::Mode::QQVGA_RGB565, CAM_PIN_SIOD, CAM_PIN_SIOC,
-                      CAM_PIN_VSYNC, CAM_PIN_HREF, CAM_PIN_XCLK, CAM_PIN_PCLK,
-                      CAM_PIN_D0, CAM_PIN_D1, CAM_PIN_D2, CAM_PIN_D3,
-                      CAM_PIN_D4, CAM_PIN_D5, CAM_PIN_D6, CAM_PIN_D7);
-  Serial.println("Идет подключение к Wi-Fi");
+  pinMode(SIDE_TRIG_PIN, OUTPUT);
+  pinMode(SIDE_ECHO_PIN, INPUT);
   WiFi.begin(ssid, password);
-
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(1000);
     Serial.print(".");
   }
-  Serial.println("Соединение с Wi-Fi установлено");
+  Serial.println("Connected to WiFi");
+
+  connectToWebSocket();
 }
 
 void loop() {
+  if (client.available()) {
+    client.poll();
 
-  if ((WiFi.status() == WL_CONNECTED)) {
-    HTTPClient http;
-    Serial.println("Делается снимок");
-    camera->oneFrame();
-    Serial.println("Снимок сохранен");
-    String url = endpoint;
-    http.begin(url.c_str());
-
-    int httpResponseCode =
-        http.sendRequest("POST", camera->frame, camera->frameBytes);
-
-    if (httpResponseCode > 0) {
-      String payload = http.getString();
-      Serial.println(httpResponseCode);
-      Serial.println(payload);
-    } else {
-      Serial.println("Ошибка HTTP-запроса");
-      Serial.println(httpResponseCode);
-    }
-    http.end();
   } else {
-    Serial.println("WiFi Disconnected");
+    if (!isStopped) {
+      stopMachine();
+    }
+    esp_deep_sleep(1000000);
   }
+
+  if (isRunning) {
+      unsigned long currentMillis = millis();
+      if (currentMillis - previousMillis >= interval) {
+        previousMillis = currentMillis;
+        readSensorsAndDrive();
+      }
+    }
 }
