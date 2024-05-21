@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <ArduinoWebsockets.h>
 #include <WiFi.h>
+#include <auto_mode.h>
 
 using namespace websockets;
 
@@ -41,14 +42,16 @@ const char *websocket_server = "ws://192.168.1.163:8000/ws";
 
 WebsocketsClient client;
 
+AutoMode autoMode = AutoMode();
+
 bool isRunning = false;
 bool isStopped = true;
-unsigned long previousMillis = 0;
-const long interval = 50; // Интервал для обновления данных
 
 void stopMachine() {
+  autoMode.stop_();
   Serial.println("Machine stopped");
   isStopped = true;
+  isRunning = false;
 }
 
 void connectToWebSocket() {
@@ -58,12 +61,11 @@ void connectToWebSocket() {
 
     if (msg == "start") {
       Serial.println("Received START signal");
-      isRunning = true; // Устанавливаем состояние работы
+      isRunning = true;
       isStopped = false;
     } else if (msg == "stop") {
       Serial.println("Received STOP signal");
-      isRunning = false; // Устанавливаем состояние остановки
-      stopMachine(); // Останавливаем машину
+      stopMachine();
     } else if (msg == "check") {
       Serial.println("Received CHECK signal");
     }
@@ -92,31 +94,13 @@ void connectToWebSocket() {
   }
 }
 
-void print_sensor_distance(uint8_t trig, uint8_t echo, String type) {
-  Serial.print("Distance ");
-  Serial.print(type);
-  Serial.print(": ");
-  digitalWrite(trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trig, LOW);
-  long duration = pulseIn(echo, HIGH);
-  long distance = duration * 0.017;
-  Serial.println(String(distance));
-}
-
-void readSensorsAndDrive() {
-  print_sensor_distance(FRONT_TRIG_PIN, FRONT_ECHO_PIN, "front");
-  print_sensor_distance(SIDE_TRIG_PIN, SIDE_ECHO_PIN, "side");
-}
-
 void setup() {
   Serial.begin(115200);
   delay(10);
-  pinMode(FRONT_TRIG_PIN, OUTPUT);
-  pinMode(FRONT_ECHO_PIN, INPUT);
-
-  pinMode(SIDE_TRIG_PIN, OUTPUT);
-  pinMode(SIDE_ECHO_PIN, INPUT);
+  autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
+                         SIDE_ECHO_PIN);
+  autoMode.attachSteering(SERVO_PWM_PIN);
+  autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -139,10 +123,6 @@ void loop() {
   }
 
   if (isRunning) {
-      unsigned long currentMillis = millis();
-      if (currentMillis - previousMillis >= interval) {
-        previousMillis = currentMillis;
-        readSensorsAndDrive();
-      }
-    }
+    autoMode.run();
+  }
 }
