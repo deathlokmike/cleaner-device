@@ -17,15 +17,15 @@ void AutoMode::stop_() { wheel.stop_(); }
 
 void AutoMode::checkSystems() {
   wheel.go(forward);
-  delay(50);
+  vTaskDelay(pdMS_TO_TICKS(50));
   wheel.go(forward);
-  delay(1000);
+  vTaskDelay(pdMS_TO_TICKS(1000));
   wheel.stop_();
 
   steering.turn(left);
-  delay(500);
+  vTaskDelay(pdMS_TO_TICKS(500));
   steering.turn(right);
-  delay(500);
+  vTaskDelay(pdMS_TO_TICKS(500));
   steering.turn(straight);
 }
 
@@ -36,9 +36,9 @@ void AutoMode::run() {
       wheel.go(forward);
       if (distance.getSide() < 15) {
         steering.turn(left);
-        delay(10);
+        vTaskDelay(pdMS_TO_TICKS(10));
         steering.turn(right);
-        delay(10);
+        vTaskDelay(pdMS_TO_TICKS(10));
       }
       steering.turn(straight);
 
@@ -48,9 +48,9 @@ void AutoMode::run() {
     } else if (distance.getFront() > 50 and distance.getSide() > 20) {
       wheel.go(forward);
       steering.turn(right);
-      delay(10);
+      vTaskDelay(pdMS_TO_TICKS(10));
       steering.turn(left);
-      delay(10);
+      vTaskDelay(pdMS_TO_TICKS(10));
       steering.turn(straight);
     } else if (distance.getFront() < 15 and distance.getSide() < 10) {
       wheel.go(backward);

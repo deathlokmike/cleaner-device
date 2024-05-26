@@ -16,6 +16,6 @@ void SteeringControl::turn(steering_directions direction) {
   int correction = 2;
   currentDirection = direction;
   servo.write(direction + correction);
-  delay(15);
+  vTaskDelay(pdMS_TO_TICKS(15));
   this->debug();
 }

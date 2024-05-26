@@ -42,8 +42,8 @@ using namespace websockets;
 const char *websocket_server = "ws://192.168.1.163:8000/ws";
 const char *endpoint = "http://192.168.1.163:8000/image";
 
-void takeImageTask(void *pvParameters);
-void machineControlTask(void *pvParameters);
+void takeImageTask(void *parameters);
+void machineControlTask(void *parameters);
 
 WebsocketsClient wsClient;
 OV7670 *camera;
@@ -76,6 +76,22 @@ void connectToWebSocket() {
     } else if (msg == "check") {
       Serial.println("Received CHECK signal");
       autoMode.checkSystems();
+    } else if (msg == "take_image") {
+      Serial.println("Received TAKE_IMAGE signal");
+      camera->oneFrame();
+      httpClient.begin(endpoint);
+
+      int httpResponseCode =
+          httpClient.sendRequest("POST", camera->frame, camera->frameBytes);
+
+      if (httpResponseCode > 0) {
+        String payload = httpClient.getString();
+        Serial.println(httpResponseCode);
+        Serial.println(payload);
+      } else {
+        Serial.println("HTTP-response error");
+      }
+      httpClient.end();
     }
   });
 
@@ -105,15 +121,15 @@ void connectToWebSocket() {
 void setup() {
   Serial.begin(115200);
   delay(10);
-  autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
-                         SIDE_ECHO_PIN);
-  autoMode.attachSteering(SERVO_PWM_PIN);
-  autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
-
   camera = new OV7670(OV7670::Mode::QQVGA_RGB565, CAM_PIN_SIOD, CAM_PIN_SIOC,
                       CAM_PIN_VSYNC, CAM_PIN_HREF, CAM_PIN_XCLK, CAM_PIN_PCLK,
                       CAM_PIN_D0, CAM_PIN_D1, CAM_PIN_D2, CAM_PIN_D3,
                       CAM_PIN_D4, CAM_PIN_D5, CAM_PIN_D6, CAM_PIN_D7);
+  delay(10);
+  autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
+                         SIDE_ECHO_PIN);
+  autoMode.attachSteering(SERVO_PWM_PIN);
+  autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
@@ -135,7 +151,7 @@ void takeImageTask(void *parameters) {
       camera->oneFrame();
       isImageSended = false;
     }
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
@@ -155,8 +171,7 @@ void machineControlTask(void *parameters) {
       autoMode.run();
 
       if (!isImageSended) {
-        String url = endpoint;
-        httpClient.begin(url.c_str());
+        httpClient.begin(endpoint);
 
         int httpResponseCode =
             httpClient.sendRequest("POST", camera->frame, camera->frameBytes);
@@ -173,7 +188,7 @@ void machineControlTask(void *parameters) {
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
