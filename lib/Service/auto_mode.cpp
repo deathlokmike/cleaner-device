@@ -15,6 +15,20 @@ void AutoMode::attachSensors(uint8_t USFrontTrigPin, int8_t USFrontEchoPin,
 
 void AutoMode::stop_() { wheel.stop_(); }
 
+void AutoMode::checkSystems() {
+  wheel.go(forward);
+  delay(50);
+  wheel.go(forward);
+  delay(1000);
+  wheel.stop_();
+
+  steering.turn(left);
+  delay(500);
+  steering.turn(right);
+  delay(500);
+  steering.turn(straight);
+}
+
 void AutoMode::run() {
   if (timer.isReady()) {
     Distance distance = sensors.getDistance();

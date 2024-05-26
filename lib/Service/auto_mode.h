@@ -19,4 +19,6 @@ public:
                      int8_t USSideTrigPin, int8_t USSideEchoPin);
   void run();
   void stop_();
+
+  void checkSystems();
 };
