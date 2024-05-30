@@ -9,33 +9,33 @@ using namespace websockets;
 
 #define USB_SPEED 115200
 
-#define CAM_PIN_PCLK 13
-#define CAM_PIN_XCLK 0
+#define CAM_PIN_PCLK 33
+#define CAM_PIN_XCLK 32
 
 #define CAM_PIN_SIOD 21
 #define CAM_PIN_SIOC 22
 
-#define CAM_PIN_D7 35
-#define CAM_PIN_D6 34
-#define CAM_PIN_D5 33
-#define CAM_PIN_D4 32
-#define CAM_PIN_D3 25
-#define CAM_PIN_D2 26
-#define CAM_PIN_D1 27
-#define CAM_PIN_D0 14
+#define CAM_PIN_D7 4
+#define CAM_PIN_D6 12
+#define CAM_PIN_D5 13
+#define CAM_PIN_D4 14
+#define CAM_PIN_D3 15
+#define CAM_PIN_D2 16
+#define CAM_PIN_D1 17
+#define CAM_PIN_D0 27
 
-#define CAM_PIN_VSYNC 12
-#define CAM_PIN_HREF 4
+#define CAM_PIN_VSYNC 34
+#define CAM_PIN_HREF 35
 
 #define FRONT_ECHO_PIN 18
 #define FRONT_TRIG_PIN 19
 
-#define SIDE_ECHO_PIN 2
-#define SIDE_TRIG_PIN 15
+#define SIDE_ECHO_PIN 36
+#define SIDE_TRIG_PIN 2
 
 #define VNH_INA_PIN 5
-#define VNH_INB_PIN 17
-#define VNH_PWM_PIN 16
+#define VNH_INB_PIN 25
+#define VNH_PWM_PIN 26
 
 #define SERVO_PWM_PIN 23
 
@@ -75,7 +75,10 @@ void connectToWebSocket() {
       stopMachine();
     } else if (msg == "check") {
       Serial.println("Received CHECK signal");
-      autoMode.checkSystems();
+      if (!isRunning)
+      {
+        // autoMode.checkSystems();
+      }
     } else if (msg == "take_image") {
       Serial.println("Received TAKE_IMAGE signal");
       camera->oneFrame();
@@ -121,15 +124,16 @@ void connectToWebSocket() {
 void setup() {
   Serial.begin(115200);
   delay(10);
+  autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
+                         SIDE_ECHO_PIN);
+  autoMode.attachSteering(SERVO_PWM_PIN);
+  autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
+
   camera = new OV7670(OV7670::Mode::QQVGA_RGB565, CAM_PIN_SIOD, CAM_PIN_SIOC,
                       CAM_PIN_VSYNC, CAM_PIN_HREF, CAM_PIN_XCLK, CAM_PIN_PCLK,
                       CAM_PIN_D0, CAM_PIN_D1, CAM_PIN_D2, CAM_PIN_D3,
                       CAM_PIN_D4, CAM_PIN_D5, CAM_PIN_D6, CAM_PIN_D7);
   delay(10);
-  autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
-                         SIDE_ECHO_PIN);
-  autoMode.attachSteering(SERVO_PWM_PIN);
-  autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
