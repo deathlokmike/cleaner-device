@@ -22,18 +22,6 @@
 #define CAM_PIN_VSYNC 34
 #define CAM_PIN_HREF 35
 
-#define FRONT_ECHO_PIN 18
-#define FRONT_TRIG_PIN 19
-
-#define SIDE_ECHO_PIN 36
-#define SIDE_TRIG_PIN 2
-
-#define VNH_INA_PIN 5
-#define VNH_INB_PIN 25
-#define VNH_PWM_PIN 26
-
-#define SERVO_PWM_PIN 23
-
 OV7670 *camera;
 String endpoint = "http://192.168.1.163:8000/image";
 
