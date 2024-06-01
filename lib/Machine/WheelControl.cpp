@@ -1,4 +1,4 @@
-#include "wheel_control.h"
+#include "WheelControl.h"
 
 WheelControl::WheelControl(){};
 

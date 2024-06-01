@@ -1,4 +1,4 @@
-#include "distance.h"
+#include "Distance.h"
 
 void Distance::setFront(long value) { front = value; }
 

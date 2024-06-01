@@ -1,4 +1,4 @@
-#include "sensors_control.h"
+#include "SensorsControl.h"
 
 SensorsControl::SensorsControl() {}
 

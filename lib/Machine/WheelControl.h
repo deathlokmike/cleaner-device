@@ -1,5 +1,5 @@
 #pragma once
-#include "timer.h"
+#include <Arduino.h>
 
 enum wheel_directions { forward = 25, backward = 25, boost = 100, stop = 0 };
 

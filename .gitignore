@@ -6,4 +6,4 @@
 .vscode/ipch
 README
 .DS_Store
-wifi_config.h
+Config.h

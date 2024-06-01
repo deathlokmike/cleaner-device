@@ -1,8 +1,12 @@
-#include "steering_control.h"
+#include "SteeringControl.h"
 
 SteeringControl::SteeringControl() {};
 
-void SteeringControl::attach(uint8_t PWMPin) { servo.attach(PWMPin); }
+void SteeringControl::attach(uint8_t PWMPin) {
+  ledcSetup(1, 50, 16);
+  ledcAttachPin(PWMPin, 1);
+  servo.attach(PWMPin);
+}
 
 void SteeringControl::debug() {
   Serial.print("Steering: ");

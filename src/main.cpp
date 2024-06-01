@@ -1,9 +1,10 @@
+#include "Config.h"
 #include "OV7670.h"
-#include "wifi_config.h"
 #include <Arduino.h>
 #include <ArduinoWebsockets.h>
+#include <AutoMode.h>
+#include <Log.h>
 #include <WiFi.h>
-#include <auto_mode.h>
 
 using namespace websockets;
 
@@ -39,161 +40,164 @@ using namespace websockets;
 
 #define SERVO_PWM_PIN 23
 
-const char *websocket_server = "ws://192.168.1.163:8000/ws";
-const char *endpoint = "http://192.168.1.163:8000/image";
+#define STACK_SIZE 40960
 
-void takeImageTask(void *parameters);
-void machineControlTask(void *parameters);
+const char *websocket_server = "ws://192.168.1.163:8000/ws";
+
+TaskHandle_t Task1 = NULL;
+TaskHandle_t Task2 = NULL;
+
+void takeImageTask(void *pvParameters);
+void machineControlTask(void *pvParameters);
+void connectionControllerTask(void *pvParameters);
 
 WebsocketsClient wsClient;
-OV7670 *camera;
+
 AutoMode autoMode = AutoMode();
-HTTPClient httpClient;
 
 bool isRunning = false;
 bool isStopped = true;
-bool isImageSended = true;
 
 void stopMachine() {
   autoMode.stop_();
-  Serial.println("Machine stopped");
+  vTaskSuspend(Task1);
+  vTaskSuspend(Task2);
+  DEBUG_PRINTLN("Machine stopped");
   isStopped = true;
   isRunning = false;
+}
+
+void takeImageAndSendPostRequest(OV7670 *camera, HTTPClient *client,
+                                 const char *endpoint) {
+  camera->oneFrame();
+  client->begin(endpoint);
+  int httpResponseCode =
+      client->sendRequest("POST", camera->frame, camera->frameBytes);
+  if (httpResponseCode > 0) {
+    String payload = client->getString();
+    DEBUG_PRINTLN(httpResponseCode);
+    DEBUG_PRINTLN(payload);
+  } else {
+    DEBUG_PRINTLN("I2S Run");
+    DEBUG_PRINTLN("HTTP-response error");
+  }
+  client->end();
 }
 
 void connectToWebSocket() {
   wsClient.onMessage([](WebsocketsMessage message) {
     String msg = message.data();
-    Serial.println("Message received: " + msg);
-
     if (msg == "start") {
-      Serial.println("Received START signal");
+      DEBUG_PRINTLN("Received START signal");
+      vTaskResume(Task1);
+      vTaskResume(Task2);
       isRunning = true;
       isStopped = false;
     } else if (msg == "stop") {
-      Serial.println("Received STOP signal");
+      DEBUG_PRINTLN("Received STOP signal");
       stopMachine();
     } else if (msg == "check") {
-      Serial.println("Received CHECK signal");
-      if (!isRunning)
-      {
-        // autoMode.checkSystems();
+      DEBUG_PRINTLN("Received CHECK signal");
+      if (!isRunning) {
+        autoMode.checkSystems();
       }
     } else if (msg == "take_image") {
-      Serial.println("Received TAKE_IMAGE signal");
-      camera->oneFrame();
-      httpClient.begin(endpoint);
-
-      int httpResponseCode =
-          httpClient.sendRequest("POST", camera->frame, camera->frameBytes);
-
-      if (httpResponseCode > 0) {
-        String payload = httpClient.getString();
-        Serial.println(httpResponseCode);
-        Serial.println(payload);
-      } else {
-        Serial.println("HTTP-response error");
-      }
-      httpClient.end();
+      DEBUG_PRINTLN("Received TAKE_IMAGE signal");
     }
   });
 
   wsClient.onEvent([](WebsocketsEvent event, String data) {
     if (event == WebsocketsEvent::ConnectionOpened) {
-      Serial.println("WebSocket connection opened");
+      DEBUG_PRINTLN("WebSocket connection opened");
     } else if (event == WebsocketsEvent::ConnectionClosed) {
-      Serial.println("WebSocket connection closed, reconnecting...");
+      DEBUG_PRINTLN("WebSocket connection closed, reconnecting...");
       connectToWebSocket();
     } else if (event == WebsocketsEvent::GotPing) {
-      Serial.println("Got a Ping!");
+      DEBUG_PRINTLN("Got a Ping!");
     } else if (event == WebsocketsEvent::GotPong) {
-      Serial.println("Got a Pong!");
+      DEBUG_PRINTLN("Got a Pong!");
     }
   });
 
   bool connected = wsClient.connect(websocket_server);
   if (connected) {
-    Serial.println("Connected to WebSocket server");
+    DEBUG_PRINTLN("Connected to WebSocket server");
   } else {
-    Serial.println("Failed to connect to WebSocket server, retrying...");
-    delay(5000);
+    DEBUG_PRINTLN("Failed to connect to WebSocket server, retrying...");
+    vTaskDelay(5000);
     connectToWebSocket();
   }
 }
 
 void setup() {
   Serial.begin(115200);
-  delay(10);
-  autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
-                         SIDE_ECHO_PIN);
+  delay(1000);
+  // autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
+  //                        SIDE_ECHO_PIN);
+  // autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
   autoMode.attachSteering(SERVO_PWM_PIN);
-  autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
-
-  camera = new OV7670(OV7670::Mode::QQVGA_RGB565, CAM_PIN_SIOD, CAM_PIN_SIOC,
-                      CAM_PIN_VSYNC, CAM_PIN_HREF, CAM_PIN_XCLK, CAM_PIN_PCLK,
-                      CAM_PIN_D0, CAM_PIN_D1, CAM_PIN_D2, CAM_PIN_D3,
-                      CAM_PIN_D4, CAM_PIN_D5, CAM_PIN_D6, CAM_PIN_D7);
   delay(10);
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
-    Serial.print(".");
+    DEBUG_PRINT(".");
   }
-  Serial.println("Connected to WiFi");
+  DEBUG_PRINTLN("Connected to WiFi");
 
+  xTaskCreatePinnedToCore(connectionControllerTask, "CTT", 2048, NULL, 1, NULL,
+                          0);
+}
+
+void connectionControllerTask(void *pvParameters) {
   connectToWebSocket();
-  xTaskCreatePinnedToCore(machineControlTask, "machineControlTask", 10000, NULL,
-                          1, NULL, 0);
-  xTaskCreatePinnedToCore(takeImageTask, "takeImageTask", 10000, NULL, 1, NULL,
-                          1);
-}
+  xTaskCreatePinnedToCore(machineControlTask, "MCT", 2048, NULL, 1, &Task1, 0);
+  vTaskSuspend(Task1);
+  static StaticTask_t xTaskBuffer;
+  static StackType_t xStack[STACK_SIZE];
+  Task2 = xTaskCreateStaticPinnedToCore(takeImageTask, "TIT", STACK_SIZE, NULL,
+                                        1, xStack, &xTaskBuffer, 1);
 
-void takeImageTask(void *parameters) {
-  for (;;) {
-    if (isRunning and isImageSended) {
-      camera->oneFrame();
-      isImageSended = false;
-    }
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
-}
-
-void machineControlTask(void *parameters) {
-  for (;;) {
-    if (wsClient.available()) {
-      wsClient.poll();
-
-    } else {
-      if (!isStopped) {
-        stopMachine();
+  if (Task2 == NULL) {
+    DEBUG_PRINTLN("Task 2: Failed to create");
+  } else {
+    vTaskSuspend(Task2);
+    while (true) {
+      if (wsClient.available()) {
+        wsClient.poll();
+      } else {
+        esp_deep_sleep(1000000);
       }
-      esp_deep_sleep(1000000);
+      vTaskDelay(pdMS_TO_TICKS(1));
     }
+  }
+  vTaskDelete(NULL);
+}
 
+void takeImageTask(void *pvParameters) {
+  OV7670 *camera = new OV7670(
+      OV7670::Mode::QQVGA_RGB565, CAM_PIN_SIOD, CAM_PIN_SIOC, CAM_PIN_VSYNC,
+      CAM_PIN_HREF, CAM_PIN_XCLK, CAM_PIN_PCLK, CAM_PIN_D0, CAM_PIN_D1,
+      CAM_PIN_D2, CAM_PIN_D3, CAM_PIN_D4, CAM_PIN_D5, CAM_PIN_D6, CAM_PIN_D7);
+  HTTPClient client;
+  const char *endpoint = "http://192.168.1.163:8000/image";
+  while (true) {
     if (isRunning) {
-      // autoMode.run();
-
-      if (!isImageSended) {
-        httpClient.begin(endpoint);
-
-        int httpResponseCode =
-            httpClient.sendRequest("POST", camera->frame, camera->frameBytes);
-
-        if (httpResponseCode > 0) {
-          String payload = httpClient.getString();
-          Serial.println(httpResponseCode);
-          Serial.println(payload);
-        } else {
-          Serial.println("HTTP-response error");
-        }
-        httpClient.end();
-        isImageSended = true;
-      }
+      takeImageAndSendPostRequest(camera, &client, endpoint);
     }
-
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
+  vTaskDelete(NULL);
+}
+
+void machineControlTask(void *pvParameters) {
+  while (true) {
+    if (isRunning) {
+      autoMode.run();
+    }
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+  vTaskDelete(NULL);
 }
 
 void loop() {}

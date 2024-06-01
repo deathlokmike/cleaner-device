@@ -1,15 +1,13 @@
 #pragma once
 
-#include <sensors_control.h>
-#include <steering_control.h>
-#include <wheel_control.h>
+#include <SensorsControl.h>
+#include <SteeringControl.h>
+#include <WheelControl.h>
 
 class AutoMode {
   WheelControl wheel = WheelControl();
   SteeringControl steering = SteeringControl();
   SensorsControl sensors = SensorsControl();
-
-  Timer timer = Timer(50);
 
 public:
   AutoMode();
