@@ -1,4 +1,5 @@
 #include "SensorsControl.h"
+#include "Log.h"
 
 SensorsControl::SensorsControl() {}
 
@@ -27,12 +28,10 @@ long SensorsControl::getSensorDistance(uint8_t trigPin, uint8_t echoPin) {
 }
 
 void SensorsControl::debug() {
-  Serial.print("Front distance: ");
-  Serial.print(String(distance.getFront()));
-  Serial.print("\n");
-  Serial.print("Side distance: ");
-  Serial.print(String(distance.getSide()));
-  Serial.print("\n");
+  DEBUG_PRINT("Front distance: ");
+  DEBUG_PRINTLN(String(distance.getFront()));
+  DEBUG_PRINT("Side distance: ");
+  DEBUG_PRINTLN(String(distance.getSide()));
 }
 
 Distance SensorsControl::getDistance() {

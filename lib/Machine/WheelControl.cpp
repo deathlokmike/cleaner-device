@@ -1,6 +1,6 @@
 #include "WheelControl.h"
-
-WheelControl::WheelControl(){};
+#include "Log.h"
+WheelControl::WheelControl() {};
 
 void WheelControl::attach(uint8_t INAPin, uint8_t INBPin, uint8_t PWMPin) {
   ina = INAPin;
@@ -10,9 +10,8 @@ void WheelControl::attach(uint8_t INAPin, uint8_t INBPin, uint8_t PWMPin) {
 }
 
 void WheelControl::debug() {
-  Serial.print("Speed: ");
-  Serial.print(String(currentDirection));
-  Serial.print("\n");
+  DEBUG_PRINT("Speed: ");
+  DEBUG_PRINTLN(String(currentDirection));
 }
 
 void WheelControl::setup() {
@@ -34,7 +33,7 @@ void WheelControl::go(wheel_directions direction) {
   this->debug();
 }
 
-void WheelControl::stop_(){
+void WheelControl::stop_() {
   currentDirection = stop;
   analogWrite(pwm, currentDirection);
   digitalWrite(ina, LOW);

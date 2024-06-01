@@ -1,6 +1,6 @@
 #pragma once
 #include "Arduino.h"
-#include "distance.h"
+#include "Distance.h"
 
 class SensorsControl {
 private:

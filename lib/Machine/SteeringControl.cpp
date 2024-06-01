@@ -1,4 +1,5 @@
 #include "SteeringControl.h"
+#include "Log.h"
 
 SteeringControl::SteeringControl() {};
 
@@ -9,11 +10,10 @@ void SteeringControl::attach(uint8_t PWMPin) {
 }
 
 void SteeringControl::debug() {
-  Serial.print("Steering: ");
-  Serial.print(String(currentDirection));
-  Serial.print(" ");
-  Serial.print(String(servo.read()));
-  Serial.print("\n");
+  DEBUG_PRINT("Steering: ");
+  DEBUG_PRINT(String(currentDirection));
+  DEBUG_PRINT(" ");
+  DEBUG_PRINTLN(String(servo.read()));
 }
 
 void SteeringControl::turn(steering_directions direction) {
