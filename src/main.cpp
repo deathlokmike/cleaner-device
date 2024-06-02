@@ -132,9 +132,9 @@ void connectToWebSocket() {
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  // autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
-  //                        SIDE_ECHO_PIN);
-  // autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
+  autoMode.attachSensors(FRONT_TRIG_PIN, FRONT_ECHO_PIN, SIDE_TRIG_PIN,
+                         SIDE_ECHO_PIN);
+  autoMode.attachWheel(VNH_INA_PIN, VNH_INB_PIN, VNH_PWM_PIN);
   autoMode.attachSteering(SERVO_PWM_PIN);
   delay(10);
 
@@ -151,12 +151,12 @@ void setup() {
 
 void connectionControllerTask(void *pvParameters) {
   connectToWebSocket();
-  xTaskCreatePinnedToCore(machineControlTask, "MCT", 2048, NULL, 1, &Task1, 0);
+  xTaskCreatePinnedToCore(machineControlTask, "MCT", 2048, NULL, 1, &Task1, 1);
   vTaskSuspend(Task1);
   static StaticTask_t xTaskBuffer;
   static StackType_t xStack[STACK_SIZE];
   Task2 = xTaskCreateStaticPinnedToCore(takeImageTask, "TIT", STACK_SIZE, NULL,
-                                        1, xStack, &xTaskBuffer, 1);
+                                        1, xStack, &xTaskBuffer, 0);
 
   if (Task2 == NULL) {
     DEBUG_PRINTLN("Task 2: Failed to create");
