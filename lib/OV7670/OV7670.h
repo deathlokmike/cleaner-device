@@ -1,21 +1,19 @@
 #pragma once
-#include "I2SCamera.h"
 #include "I2C.h"
+#include "I2SCamera.h"
 
-class OV7670: public I2SCamera
-{
-  public:
-  enum Mode
-  {
+class OV7670 : public I2SCamera {
+public:
+  enum Mode {
     QQQVGA_RGB565,
     QQVGA_RGB565,
     QVGA_RGB565,
     VGA_RGB565,
   };
 
-  protected:
+protected:
   static const int ADDR = 0x42;
-  
+
   Mode mode;
   I2C i2c;
 
@@ -26,16 +24,17 @@ class OV7670: public I2SCamera
   void QQVGARGB565();
   void QQQVGA();
   void QQQVGARGB565();
-  void inline writeRegister(unsigned char reg, unsigned char data)
-  {
+  void inline writeRegister(unsigned char reg, unsigned char data) {
     i2c.writeRegister(ADDR, reg, data);
   }
 
-  public:
-  OV7670(OV7670::Mode m, const int SIOD, const int SIOC, const int VSYNC, const int HREF, const int XCLK, const int PCLK, const int D0, const int D1, const int D2, const int D3, const int D4, const int D5, const int D6, const int D7);
+public:
+  OV7670(OV7670::Mode m, const int SIOD, const int SIOC, const int VSYNC,
+         const int HREF, const int XCLK, const int PCLK, const int D0,
+         const int D1, const int D2, const int D3, const int D4, const int D5,
+         const int D6, const int D7);
 
-
-//camera registers
+  // camera registers
   static const int REG_GAIN = 0x00;
   static const int REG_BLUE = 0x01;
   static const int REG_RED = 0x02;
@@ -47,14 +46,14 @@ class OV7670: public I2SCamera
   static const int REG_AECH = 0x10;
   static const int REG_CLKRC = 0x11;
   static const int REG_COM7 = 0x12;
-    static const int COM7_RGB = 0x04;
+  static const int COM7_RGB = 0x04;
   static const int REG_COM8 = 0x13;
-    static const int COM8_FASTAEC = 0x80;    // Enable fast AGC/AEC
-    static const int COM8_AECSTEP = 0x40;    // Unlimited AEC step size
-    static const int COM8_BFILT = 0x20;    // Band filter enable
-    static const int COM8_AGC = 0x04;    // Auto gain enable
-    static const int COM8_AWB = 0x02;    // White balance enable
-    static const int COM8_AEC = 0x0;
+  static const int COM8_FASTAEC = 0x80; // Enable fast AGC/AEC
+  static const int COM8_AECSTEP = 0x40; // Unlimited AEC step size
+  static const int COM8_BFILT = 0x20;   // Band filter enable
+  static const int COM8_AGC = 0x04;     // Auto gain enable
+  static const int COM8_AWB = 0x02;     // White balance enable
+  static const int COM8_AEC = 0x0;
   static const int REG_COM9 = 0x14;
   static const int REG_COM10 = 0x15;
   static const int REG_COM14 = 0x3E;
@@ -67,8 +66,8 @@ class OV7670: public I2SCamera
   static const int REG_TSLB = 0x3A;
   static const int REG_RGB444 = 0x8C;
   static const int REG_COM15 = 0x40;
-    static const int COM15_RGB565 = 0x10;
-    static const int COM15_R00FF = 0xc0;
+  static const int COM15_RGB565 = 0x10;
+  static const int COM15_R00FF = 0xc0;
   static const int REG_HSTART = 0x17;
   static const int REG_HSTOP = 0x18;
   static const int REG_HREF = 0x32;
@@ -77,9 +76,9 @@ class OV7670: public I2SCamera
   static const int REG_COM3 = 0x0C;
   static const int REG_MVFP = 0x1E;
   static const int REG_COM13 = 0x3d;
-    static const int COM13_UVSAT = 0x40;
+  static const int COM13_UVSAT = 0x40;
   static const int REG_SCALING_XSC = 0x70;
-  static const int REG_SCALING_YSC = 0x71;    
+  static const int REG_SCALING_YSC = 0x71;
   static const int REG_SCALING_DCWCTR = 0x72;
   static const int REG_SCALING_PCLK_DIV = 0x73;
   static const int REG_SCALING_PCLK_DELAY = 0xa2;
@@ -102,6 +101,4 @@ class OV7670: public I2SCamera
   static const int REG_EDGE = 0x3f;
   static const int REG_REG76 = 0x76;
   static const int ADCCTR0 = 0x20;
-
 };
-
