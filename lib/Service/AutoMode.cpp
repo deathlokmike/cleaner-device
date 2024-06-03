@@ -2,15 +2,15 @@
 
 AutoMode::AutoMode() {};
 
-void AutoMode::attachSteering(uint8_t PWMPin) { steering.attach(PWMPin); }
+void AutoMode::attachSteering(uint8_t PWM) { steering.attach(PWM); }
 
-void AutoMode::attachWheel(uint8_t INAPin, uint8_t INBPin, uint8_t PWMPin) {
-  wheel.attach(INAPin, INBPin, PWMPin);
+void AutoMode::attachWheel(uint8_t INA, uint8_t INB, uint8_t PWM) {
+  wheel.attach(INA, INB, PWM);
 }
 
-void AutoMode::attachSensors(uint8_t USFrontTrigPin, int8_t USFrontEchoPin,
-                             int8_t USSideTrigPin, int8_t USSideEchoPin) {
-  sensors.attach(USFrontTrigPin, USFrontEchoPin, USSideTrigPin, USSideEchoPin);
+void AutoMode::attachSensors(uint8_t USFrontTrig, int8_t USFrontEcho,
+                             int8_t USSideTrig, int8_t USSideEcho) {
+  sensors.attach(USFrontTrig, USFrontEcho, USSideTrig, USSideEcho);
 }
 
 void AutoMode::stop_() { wheel.stop_(); }
@@ -31,12 +31,6 @@ void AutoMode::checkSystems() {
 }
 
 void AutoMode::run() {
-  // steering.turn(left);
-  // vTaskDelay(pdMS_TO_TICKS(500));
-  // steering.turn(right);
-  // vTaskDelay(pdMS_TO_TICKS(500));
-  // steering.turn(straight);
-  // vTaskDelay(pdMS_TO_TICKS(500));
   Distance distance = sensors.getDistance();
   if (distance.getFront() > 50 and distance.getSide() <= 20) {
 

@@ -13,6 +13,6 @@ private:
 public:
   SteeringControl();
   steering_directions currentDirection = straight;
-  void attach(uint8_t PWMPin);
+  void attach(uint8_t PWM);
   void turn(steering_directions direction);
 };

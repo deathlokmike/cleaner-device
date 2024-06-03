@@ -3,10 +3,10 @@
 
 SteeringControl::SteeringControl() {};
 
-void SteeringControl::attach(uint8_t PWMPin) {
+void SteeringControl::attach(uint8_t PWM) {
   ledcSetup(1, 50, 16);
-  ledcAttachPin(PWMPin, 1);
-  servo.attach(PWMPin);
+  ledcAttachPin(PWM, 1);
+  servo.attach(PWM);
 }
 
 void SteeringControl::debug() {

@@ -19,7 +19,7 @@ private:
 
 public:
   WheelControl();
-  void attach(uint8_t INAPin, uint8_t INBPin, uint8_t PWMPin);
+  void attach(uint8_t INA, uint8_t INB, uint8_t PWM);
   void go(wheel_directions direction);
   void stop_();
 };

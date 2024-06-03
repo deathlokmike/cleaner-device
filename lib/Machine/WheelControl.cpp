@@ -2,10 +2,10 @@
 #include "Log.h"
 WheelControl::WheelControl() {};
 
-void WheelControl::attach(uint8_t INAPin, uint8_t INBPin, uint8_t PWMPin) {
-  ina = INAPin;
-  inb = INBPin;
-  pwm = PWMPin;
+void WheelControl::attach(uint8_t INA, uint8_t INB, uint8_t PWM) {
+  ina = INA;
+  inb = INB;
+  pwm = PWM;
   this->setup();
 }
 
