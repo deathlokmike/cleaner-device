@@ -1,5 +1,6 @@
 #include "SensorsControl.h"
-#include "Log.h"
+#include "Globals.h"
+#include "esp_log.h"
 
 SensorsControl::SensorsControl() {}
 
@@ -28,17 +29,13 @@ long SensorsControl::getSensorDistance(uint8_t trig, uint8_t echo) {
 }
 
 void SensorsControl::debug() {
-  DEBUG_PRINT("Front distance: ");
-  DEBUG_PRINTLN(String(distance.getFront()));
-  DEBUG_PRINT("Side distance: ");
-  DEBUG_PRINTLN(String(distance.getSide()));
+  ESP_LOGD(autoModeLogTag, "Front distance: %d", distance.getFront());
+  ESP_LOGD(autoModeLogTag, "Side distance: %d", distance.getSide());
 }
 
 Distance SensorsControl::getDistance() {
-  distance.setFront(
-      this->getSensorDistance(this->frontTrig, this->frontEcho));
-  distance.setSide(
-      this->getSensorDistance(this->sideTrig, this->sideEcho));
+  distance.setFront(this->getSensorDistance(this->frontTrig, this->frontEcho));
+  distance.setSide(this->getSensorDistance(this->sideTrig, this->sideEcho));
   this->debug();
   return distance;
 }

@@ -4,7 +4,8 @@
 // released under Apache License 2.0
 
 #include "I2SCamera.h"
-#include "Log.h"
+#include "Globals.h"
+#include "esp_log.h"
 
 int I2SCamera::blocksReceived = 0;
 int I2SCamera::framesReceived = 0;
@@ -59,7 +60,7 @@ void I2SCamera::i2sStop() {
 }
 
 void I2SCamera::i2sRun() {
-  DEBUG_PRINTLN("I2S Run");
+  ESP_LOGD(cameraLogTag, "I2S Run");
   while (gpio_get_level(vSyncPin) == 0)
     ;
   while (gpio_get_level(vSyncPin) != 0)
@@ -70,8 +71,6 @@ void I2SCamera::i2sRun() {
   blocksReceived = 0;
   dmaBufferActive = 0;
   framePointer = 0;
-  DEBUG_PRINT("Sample count ");
-  DEBUG_PRINTLN(dmaBuffer[0]->sampleCount());
   I2S0.rx_eof_num = dmaBuffer[0]->sampleCount();
   I2S0.in_link.addr = (uint32_t) & (dmaBuffer[0]->descriptor);
   I2S0.in_link.start = 1;
@@ -84,17 +83,17 @@ void I2SCamera::i2sRun() {
 }
 
 bool I2SCamera::initVSync(int pin) {
-  DEBUG_PRINT("Initializing VSYNC... ");
+  ESP_LOGD(cameraLogTag, "Initializing VSYNC");
   vSyncPin = (gpio_num_t)pin;
   gpio_set_intr_type(vSyncPin, GPIO_INTR_POSEDGE);
   gpio_intr_enable(vSyncPin);
   if (gpio_isr_register(&vSyncInterrupt, (void *)"vSyncInterrupt",
                         ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_IRAM,
                         &vSyncInterruptHandle) != ESP_OK) {
-    DEBUG_PRINTLN("failed!");
+    ESP_LOGW(cameraLogTag, "Failed Initializing VSYNC");
     return false;
   }
-  DEBUG_PRINTLN("done.");
+  ESP_LOGD(cameraLogTag, "Done");
   return true;
 }
 
@@ -109,7 +108,7 @@ bool I2SCamera::init(const int XRES, const int YRES, const int VSYNC,
   frameBytes = XRES * YRES * 2;
   frame = (unsigned char *)malloc(frameBytes);
   if (!frame) {
-    DEBUG_PRINTLN("Not enough memory for frame buffer!");
+    ESP_LOGW(cameraLogTag, "Not enough memory for frame buffer");
     return false;
   }
   i2sInit(VSYNC, HREF, PCLK, D0, D1, D2, D3, D4, D5, D6, D7);

@@ -1,5 +1,6 @@
 #include "SteeringControl.h"
-#include "Log.h"
+#include "Globals.h"
+#include "esp_log.h"
 
 SteeringControl::SteeringControl() {};
 
@@ -10,10 +11,7 @@ void SteeringControl::attach(uint8_t PWM) {
 }
 
 void SteeringControl::debug() {
-  DEBUG_PRINT("Steering: ");
-  DEBUG_PRINT(String(currentDirection));
-  DEBUG_PRINT(" ");
-  DEBUG_PRINTLN(String(servo.read()));
+  ESP_LOGD(autoModeLogTag, "Steering. %d:%d", currentDirection, servo.read());
 }
 
 void SteeringControl::turn(steering_directions direction) {

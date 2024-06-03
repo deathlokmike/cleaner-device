@@ -31,29 +31,5 @@ void AutoMode::checkSystems() {
 }
 
 void AutoMode::run() {
-  Distance distance = sensors.getDistance();
-  if (distance.getFront() > 50 and distance.getSide() <= 20) {
-
-    if (distance.getSide() < 15) {
-      steering.turn(left);
-      vTaskDelay(pdMS_TO_TICKS(10));
-      steering.turn(right);
-      vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    steering.turn(straight);
-
-  } else if (distance.getFront() < 50 and distance.getSide() <= 20) {
-    wheel.go(forward);
-    steering.turn(left);
-  } else if (distance.getFront() > 50 and distance.getSide() > 20) {
-    wheel.go(forward);
-    steering.turn(right);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    steering.turn(left);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    steering.turn(straight);
-  } else if (distance.getFront() < 15 and distance.getSide() < 10) {
-    wheel.go(backward);
-    steering.turn(right);
-  }
+  this->checkSystems();
 }

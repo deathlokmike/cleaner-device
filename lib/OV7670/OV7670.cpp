@@ -1,6 +1,7 @@
 #include "OV7670.h"
-#include "Log.h"
 #include "XClk.h"
+#include "esp_log.h"
+#include "Globals.h"
 
 OV7670::OV7670(Mode m, const int SIOD, const int SIOC, const int VSYNC,
                const int HREF, const int XCLK, const int PCLK, const int D0,
@@ -8,14 +9,13 @@ OV7670::OV7670(Mode m, const int SIOD, const int SIOC, const int VSYNC,
                const int D5, const int D6, const int D7)
     : i2c(SIOD, SIOC) {
   ClockEnable(XCLK, 40000000); // 160MHz
-
-  DEBUG_PRINT("Waiting for VSYNC...");
+  ESP_LOGD(cameraLogTag, "Waiting for VSYNC...");
   pinMode(VSYNC, INPUT);
   while (!digitalRead(VSYNC))
     ;
   while (digitalRead(VSYNC))
     ;
-  DEBUG_PRINTLN(" done");
+  ESP_LOGD(cameraLogTag, "Done");
 
   mode = m;
   switch (mode) {

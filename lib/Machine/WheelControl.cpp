@@ -1,5 +1,7 @@
 #include "WheelControl.h"
-#include "Log.h"
+#include "Globals.h"
+#include "esp_log.h"
+
 WheelControl::WheelControl() {};
 
 void WheelControl::attach(uint8_t INA, uint8_t INB, uint8_t PWM) {
@@ -10,8 +12,7 @@ void WheelControl::attach(uint8_t INA, uint8_t INB, uint8_t PWM) {
 }
 
 void WheelControl::debug() {
-  DEBUG_PRINT("Speed: ");
-  DEBUG_PRINTLN(String(currentDirection));
+  ESP_LOGD(autoModeLogTag, "Speed: %d", currentDirection);
 }
 
 void WheelControl::setup() {
