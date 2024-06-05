@@ -3,18 +3,10 @@
 #include "I2SCamera.h"
 
 class OV7670 : public I2SCamera {
-public:
-  enum Mode {
-    QQQVGA_RGB565,
-    QQVGA_RGB565,
-    QVGA_RGB565,
-    VGA_RGB565,
-  };
 
 protected:
   static const int ADDR = 0x42;
 
-  Mode mode;
   I2C i2c;
 
   void testImage();
@@ -22,14 +14,12 @@ protected:
   void frameControl(int hStart, int hStop, int vStart, int vStop);
   void QQVGA();
   void QQVGARGB565();
-  void QQQVGA();
-  void QQQVGARGB565();
   void inline writeRegister(unsigned char reg, unsigned char data) {
     i2c.writeRegister(ADDR, reg, data);
   }
 
 public:
-  OV7670(OV7670::Mode m, const int SIOD, const int SIOC, const int VSYNC,
+  OV7670(const int SIOD, const int SIOC, const int VSYNC,
          const int HREF, const int XCLK, const int PCLK, const int D0,
          const int D1, const int D2, const int D3, const int D4, const int D5,
          const int D6, const int D7);

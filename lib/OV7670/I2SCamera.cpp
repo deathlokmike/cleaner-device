@@ -9,8 +9,8 @@
 
 int I2SCamera::blocksReceived = 0;
 int I2SCamera::framesReceived = 0;
-int I2SCamera::xres = 640;
-int I2SCamera::yres = 480;
+int I2SCamera::xres = 160;
+int I2SCamera::yres = 120;
 gpio_num_t I2SCamera::vSyncPin = (gpio_num_t)0;
 intr_handle_t I2SCamera::i2sInterruptHandle = 0;
 intr_handle_t I2SCamera::vSyncInterruptHandle = 0;
