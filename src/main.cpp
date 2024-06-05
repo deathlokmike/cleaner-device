@@ -1,123 +1,153 @@
 #include "Config.h"
+#include "Globals.h"
 #include "OV7670.h"
+#include "esp_log.h"
 #include <Arduino.h>
 #include <ArduinoWebsockets.h>
 #include <AutoMode.h>
-#include <Log.h>
 #include <WiFi.h>
 
 using namespace websockets;
 
-const char *websocket_server = "ws://192.168.1.163:8000/ws";
-
-TaskHandle_t Task1 = NULL;
-TaskHandle_t Task2 = NULL;
+TaskHandle_t TaskMachineHandler = NULL;
+TaskHandle_t TaskCameraHandler = NULL;
+HTTPClient client;
+WebsocketsClient wsClient;
+OV7670 *camera;
+AutoMode autoMode = AutoMode();
 
 void takeImageTask(void *pvParameters);
 void machineControlTask(void *pvParameters);
 void superLoopTask(void *pvParameters);
+// void checkSystemTask(void *pvParameters);
+// void checkCameraTask(void *pvParameters);
 
-WebsocketsClient wsClient;
-
-AutoMode autoMode = AutoMode();
-
-void takeImageAndSendPostRequest(OV7670 *camera, HTTPClient *client,
-                                 const char *endpoint) {
+void takeImageAndSendPostRequest() {
   camera->oneFrame();
-  client->begin(endpoint);
+  client.begin(endpoint);
   int httpResponseCode =
-      client->sendRequest("POST", camera->frame, camera->frameBytes);
+      client.sendRequest("POST", camera->frame, camera->frameBytes);
   if (httpResponseCode > 0) {
-    String payload = client->getString();
-    DEBUG_PRINTLN(httpResponseCode);
-    DEBUG_PRINTLN(payload);
+    String payload = client.getString();
+    ESP_LOGI(mainLogTag, "HTTP: [%d] %s", httpResponseCode, payload);
   } else {
-    DEBUG_PRINTLN("HTTP-response error");
+    ESP_LOGW(mainLogTag, "HTTP-response error");
   }
-  client->end();
+  client.end();
+}
+
+// void checkSystemTask(void *pvParameters) {
+//   ESP_LOGD(mainLogTag, "[CST]: started");
+//   autoMode.checkSystems();
+//   wsClient.send("done");
+//   vTaskDelete(NULL);
+// }
+
+// void checkCameraTask(void *pvParameters) {
+//   ESP_LOGD(mainLogTag, "[CCT]: started");
+//   takeImageAndSendPostRequest();
+//   wsClient.send("done");
+//   vTaskDelete(NULL);
+// }
+
+void onEventsCallback(WebsocketsEvent event, String data) {
+  if (event == WebsocketsEvent::ConnectionOpened) {
+    ESP_LOGI(mainLogTag, "WebSocket connection opened");
+  } else if (event == WebsocketsEvent::ConnectionClosed) {
+    ESP_LOGW(mainLogTag, "WebSocket connection closed");
+  } else if (event == WebsocketsEvent::GotPing) {
+    ESP_LOGD(mainLogTag, "Got a Ping!");
+  } else if (event == WebsocketsEvent::GotPong) {
+    ESP_LOGD(mainLogTag, "Got a Pong!");
+  }
+}
+
+void onMessageCallback(WebsocketsMessage message) {
+  if (message.data() == "start") {
+    vTaskResume(TaskMachineHandler);
+    vTaskResume(TaskCameraHandler);
+    ESP_LOGI(mainLogTag, "Machine started");
+  } else if (message.data() == "stop") {
+    vTaskSuspend(TaskMachineHandler);
+    vTaskSuspend(TaskCameraHandler);
+    autoMode.stop_();
+    ESP_LOGI(mainLogTag, "Machine stopped");
+  }
+  // else if (message.data() == "check_system") {
+  //   xTaskCreatePinnedToCore(checkSystemTask, "CST", 2048, NULL, 1,
+  //                           &TaskCameraHandler, 0);
+  // } else if (message.data() == "check_camera") {
+  //   xTaskCreatePinnedToCore(checkCameraTask, "CCT", 2048, NULL, 1,
+  //                           &TaskCameraHandler, 0);
+  // }
+  else if (message.data() == "suspend") {
+    vTaskSuspend(TaskMachineHandler);
+    autoMode.stop_();
+    ESP_LOGI(mainLogTag, "Machine stopped");
+  } else if (message.data() == "resume") {
+    vTaskResume(TaskMachineHandler);
+  }
 }
 
 void connectToWebSocket() {
-  wsClient.onMessage([](WebsocketsMessage message) {
-    String msg = message.data();
-    if (msg == "start") {
-      DEBUG_PRINTLN("Received START signal");
-      vTaskResume(Task1);
-      vTaskResume(Task2);
-      DEBUG_PRINTLN("Machine started");
-    } else if (msg == "stop") {
-      DEBUG_PRINTLN("Received STOP signal");
-      vTaskSuspend(Task1);
-      vTaskSuspend(Task2);
-      autoMode.stop_();
-      DEBUG_PRINTLN("Machine stopped");
-    } else if (msg == "check") {
-      DEBUG_PRINTLN("Received CHECK signal");
-      autoMode.checkSystems();
-    } else if (msg == "take_image") {
-      DEBUG_PRINTLN("Received TAKE_IMAGE signal");
-    }
-  });
-
-  wsClient.onEvent([](WebsocketsEvent event, String data) {
-    if (event == WebsocketsEvent::ConnectionOpened) {
-      DEBUG_PRINTLN("WebSocket connection opened");
-    } else if (event == WebsocketsEvent::ConnectionClosed) {
-      DEBUG_PRINTLN("WebSocket connection closed, reconnecting...");
-      connectToWebSocket();
-    } else if (event == WebsocketsEvent::GotPing) {
-      DEBUG_PRINTLN("Got a Ping!");
-    } else if (event == WebsocketsEvent::GotPong) {
-      DEBUG_PRINTLN("Got a Pong!");
-    }
-  });
-
-  bool connected = wsClient.connect(websocket_server);
-  if (connected) {
-    DEBUG_PRINTLN("Connected to WebSocket server");
-  } else {
-    DEBUG_PRINTLN("Failed to connect to WebSocket server, retrying...");
+  while (!wsClient.connect(websocket_server)) {
+    ESP_LOGW(mainLogTag, "Failed to connect to WebSocket server, retrying...");
     vTaskDelay(5000);
-    connectToWebSocket();
   }
+
+  ESP_LOGI(mainLogTag, "Connected to WebSocket server");
+  String mac = "mac:" + String(WiFi.macAddress());
+  wsClient.send(mac);
 }
 
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+
+  ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
+
+  camera = new OV7670(CAM_SIOD, CAM_SIOC, CAM_VSYNC, CAM_HREF, CAM_XCLK,
+                      CAM_PCLK, CAM_D0, CAM_D1, CAM_D2, CAM_D3, CAM_D4, CAM_D5,
+                      CAM_D6, CAM_D7);
+
   autoMode.attachSensors(FRONT_TRIG, FRONT_ECHO, SIDE_TRIG, SIDE_ECHO);
   autoMode.attachWheel(VNH_INA, VNH_INB, VNH_PWM);
   autoMode.attachSteering(SERVO_PWM);
-  delay(10);
+
+  ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
-    DEBUG_PRINT(".");
   }
-  DEBUG_PRINTLN("Connected to WiFi");
 
-  xTaskCreatePinnedToCore(superLoopTask, "SLT", 2048, NULL, 1, NULL, 0);
+  ESP_LOGI(mainLogTag, "Connected to WiFi");
+  wsClient.onMessage(onMessageCallback);
+  wsClient.onEvent(onEventsCallback);
+  connectToWebSocket();
+
+  xTaskCreatePinnedToCore(superLoopTask, "SLT", 32768, NULL, 1, NULL, 0);
 }
 
 void superLoopTask(void *pvParameters) {
-  connectToWebSocket();
-  xTaskCreatePinnedToCore(machineControlTask, "MCT", 2048, NULL, 1, &Task1, 1);
-  vTaskSuspend(Task1);
-  static StaticTask_t xTaskBuffer;
-  static StackType_t xStack[STACK_SIZE];
-  Task2 = xTaskCreateStaticPinnedToCore(takeImageTask, "TIT", STACK_SIZE, NULL,
-                                        1, xStack, &xTaskBuffer, 0);
+  ESP_LOGD(mainLogTag, "[SLT]: started");
+  xTaskCreatePinnedToCore(machineControlTask, "MCT", 2048, NULL, 1,
+                          &TaskMachineHandler, 1);
+  xTaskCreatePinnedToCore(takeImageTask, "TIT", 16384, NULL, 1,
+                          &TaskCameraHandler, 0);
 
-  if (Task2 == NULL) {
-    DEBUG_PRINTLN("Task 2: Failed to create");
-  } else {
-    vTaskSuspend(Task2);
+  if (TaskCameraHandler == NULL) {
+    ESP_LOGW(mainLogTag, "TIT: Failed to create");
+  } else if (TaskMachineHandler == NULL) {
+    ESP_LOGW(mainLogTag, "MCT: Failed to create");
+  }
+
+  else {
+    vTaskSuspend(TaskCameraHandler);
+    vTaskSuspend(TaskMachineHandler);
+    ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
     while (true) {
       if (wsClient.available()) {
         wsClient.poll();
-      } else {
-        esp_deep_sleep(1000000);
       }
       vTaskDelay(pdMS_TO_TICKS(1));
     }
@@ -126,21 +156,19 @@ void superLoopTask(void *pvParameters) {
 }
 
 void takeImageTask(void *pvParameters) {
-  OV7670 *camera =
-      new OV7670(OV7670::Mode::QQVGA_RGB565, CAM_SIOD, CAM_SIOC, CAM_VSYNC,
-                 CAM_HREF, CAM_XCLK, CAM_PCLK, CAM_D0, CAM_D1, CAM_D2, CAM_D3,
-                 CAM_D4, CAM_D5, CAM_D6, CAM_D7);
-  HTTPClient client;
-  const char *endpoint = "http://192.168.1.163:8000/image";
+  ESP_LOGD(mainLogTag, "[TIT]: started");
   while (true) {
-    takeImageAndSendPostRequest(camera, &client, endpoint);
+    ESP_LOGD(mainLogTag, "[TIT]: iter");
+    takeImageAndSendPostRequest();
     vTaskDelay(pdMS_TO_TICKS(1));
   }
   vTaskDelete(NULL);
 }
 
 void machineControlTask(void *pvParameters) {
+  ESP_LOGD(mainLogTag, "[MCT]: started");
   while (true) {
+    ESP_LOGD(mainLogTag, "[MCT]: iter");
     autoMode.run();
     vTaskDelay(pdMS_TO_TICKS(1));
   }

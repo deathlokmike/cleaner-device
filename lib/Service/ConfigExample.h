@@ -30,7 +30,7 @@
 
 #define SERVO_PWM 23
 
-#define STACK_SIZE 40960
-
 const char *ssid = "...";
 const char *password = "...";
+const char *websocket_server = "ws://192.168.1.163:8000/ws/cleaner";
+const char *endpoint = "http://192.168.1.163:8000/api/image";
