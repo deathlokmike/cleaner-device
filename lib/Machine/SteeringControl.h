@@ -2,17 +2,23 @@
 #include <ESP32Servo.h>
 #include <Arduino.h>
 
-enum steering_directions { straight = 90, left = 125, right = 55 };
+enum steering_directions
+{
+    straight = 90,
+    left = 125,
+    right = 55
+};
 
-class SteeringControl {
+class SteeringControl
+{
 private:
-  Servo servo;
+    Servo servo;
 
-  void debug();
+    void debug();
 
 public:
-  SteeringControl();
-  steering_directions currentDirection = straight;
-  void attach(uint8_t PWM);
-  void turn(steering_directions direction);
+    SteeringControl();
+    steering_directions currentDirection = straight;
+    void attach(uint8_t PWM);
+    void turn(steering_directions direction);
 };
