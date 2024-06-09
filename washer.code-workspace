@@ -8,21 +8,27 @@
 	"settings": {
     "editor.detectIndentation": false,
     "files.associations": {
-      "*.tcc": "cpp",
-      "iterator": "cpp",
-      "random": "cpp",
-      "array": "cpp",
-      "deque": "cpp",
-      "string": "cpp",
-      "unordered_map": "cpp",
-      "unordered_set": "cpp",
-      "vector": "cpp",
-      "string_view": "cpp",
-      "initializer_list": "cpp",
-      "fstream": "cpp",
-      "istream": "cpp",
-      "ostream": "cpp",
-      "sstream": "cpp"
+        "*.tcc": "cpp",
+        "iterator": "cpp",
+        "random": "cpp",
+        "array": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "optional": "cpp",
+        "system_error": "cpp",
+        "functional": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp"
     }
 	}
 }
