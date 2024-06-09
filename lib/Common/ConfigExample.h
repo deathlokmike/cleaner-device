@@ -3,9 +3,6 @@
 #define CAM_PCLK 33
 #define CAM_XCLK 32
 
-#define CAM_SIOD 21
-#define CAM_SIOC 22
-
 #define CAM_D7 4
 #define CAM_D6 12
 #define CAM_D5 13
