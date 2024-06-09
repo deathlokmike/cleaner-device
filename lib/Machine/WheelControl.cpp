@@ -19,9 +19,10 @@ void WheelControl::debug()
 
 void WheelControl::setup()
 {
+    ledcSetup(2, 20000, 8);
+    ledcAttachPin(pwm, 2);
     pinMode(ina, OUTPUT);
     pinMode(inb, OUTPUT);
-    pinMode(pwm, OUTPUT);
 }
 
 void WheelControl::go(wheel_directions direction)
@@ -36,7 +37,7 @@ void WheelControl::go(wheel_directions direction)
         if (currentDirection == stop)
         {
             analogWrite(pwm, boost);
-            vTaskDelay(pdMS_TO_TICKS(50));
+            vTaskDelay(pdMS_TO_TICKS(100));
         }
 
         currentDirection = direction;
@@ -49,6 +50,9 @@ void WheelControl::stop_()
 {
     currentDirection = stop;
     analogWrite(pwm, currentDirection);
+    digitalWrite(ina, HIGH);
+    digitalWrite(inb, HIGH);
+    vTaskDelay(pdMS_TO_TICKS(100));
     digitalWrite(ina, LOW);
     digitalWrite(inb, LOW);
 }

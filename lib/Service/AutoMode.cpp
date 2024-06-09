@@ -31,12 +31,23 @@ void AutoMode::checkSystems()
     steering.turn(straight);
 }
 
-void AutoMode::turnLeft()
+bool AutoMode::turnLeft()
 {
-    wheel.go(forward);
-    steering.turn(left);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    wheel.stop_();
+    Distance distance = sensors.getDistance();
+    if (distance.getFront() <= 49)
+    {
+        steering.turn(left);
+        vTaskDelay(pdMS_TO_TICKS(1300));
+        steering.turn(straight);
+        vTaskDelay(pdMS_TO_TICKS(500));
+        wheel.stop_();
+        return true;
+    }
+    else
+    {
+        wheel.go(forward);
+    }
+    return false;
 }
 
 void AutoMode::run()

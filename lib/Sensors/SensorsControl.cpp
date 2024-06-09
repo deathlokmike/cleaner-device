@@ -22,9 +22,9 @@ void SensorsControl::attach(uint8_t USFrontTrig, uint8_t USFrontEcho,
 long SensorsControl::getSensorDistance(uint8_t trig, uint8_t echo)
 {
     digitalWrite(trig, LOW);
-    vTaskDelay(pdMS_TO_TICKS(2));
+    delayMicroseconds(2);
     digitalWrite(trig, HIGH);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    delayMicroseconds(10);
     digitalWrite(trig, LOW);
     long duration = pulseIn(echo, HIGH);
     return (duration * 0.017);

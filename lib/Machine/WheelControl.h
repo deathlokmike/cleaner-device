@@ -3,8 +3,8 @@
 
 enum wheel_directions
 {
-    forward = 25,
-    backward = 25,
+    forward = 23,
+    backward = 31,
     boost = 100,
     stop = 0
 };

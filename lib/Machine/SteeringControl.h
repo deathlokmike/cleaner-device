@@ -4,9 +4,9 @@
 
 enum steering_directions
 {
-    straight = 90,
-    left = 125,
-    right = 55
+    right = 1236,
+    straight = 1500,
+    left = 1764
 };
 
 class SteeringControl

@@ -20,5 +20,5 @@ public:
     void stop_();
 
     void checkSystems();
-    void turnLeft();
+    bool turnLeft();
 };
