@@ -1,5 +1,4 @@
 #pragma once
-#include "I2C.h"
 #include "I2SCamera.h"
 
 class OV7670 : public I2SCamera
@@ -8,21 +7,13 @@ class OV7670 : public I2SCamera
 protected:
     static const int ADDR = 0x42;
 
-    I2C i2c;
-
-    void testImage();
     void saturation(int s);
     void frameControl(int hStart, int hStop, int vStart, int vStop);
     void QQVGA();
     void QQVGARGB565();
-    void inline writeRegister(unsigned char reg, unsigned char data)
-    {
-        i2c.writeRegister(ADDR, reg, data);
-    }
 
 public:
-    OV7670(const int SIOD, const int SIOC, const int VSYNC,
-           const int HREF, const int XCLK, const int PCLK, const int D0,
+    OV7670(const int VSYNC, const int HREF, const int XCLK, const int PCLK, const int D0,
            const int D1, const int D2, const int D3, const int D4, const int D5,
            const int D6, const int D7);
 
