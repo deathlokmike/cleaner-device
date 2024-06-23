@@ -1,12 +1,10 @@
 #pragma once
-
-class DMABuffer
-{
-public:
+#include "rom/lldesc.h"
+class DMABuffer {
+   public:
     lldesc_t descriptor;
     unsigned char *buffer;
-    DMABuffer(int bytes)
-    {
+    DMABuffer(int bytes) {
         buffer = (unsigned char *)malloc(bytes);
         descriptor.length = bytes;
         descriptor.size = descriptor.length;
@@ -19,13 +17,13 @@ public:
         descriptor.qe.stqe_next = 0;
     }
 
-    void next(DMABuffer *next) { descriptor.qe.stqe_next = &(next->descriptor); }
+    void next(DMABuffer *next) {
+        descriptor.qe.stqe_next = &(next->descriptor);
+    }
 
     int sampleCount() const { return descriptor.length / 4; }
 
-    ~DMABuffer()
-    {
-        if (buffer)
-            delete (buffer);
+    ~DMABuffer() {
+        if (buffer) delete (buffer);
     }
 };

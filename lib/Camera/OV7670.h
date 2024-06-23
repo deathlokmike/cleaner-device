@@ -1,21 +1,19 @@
 #pragma once
 #include "I2SCamera.h"
 
-class OV7670 : public I2SCamera
-{
-
-protected:
-    static const int ADDR = 0x42;
+class OV7670 : public I2SCamera {
+   protected:
+    static const int ADDR = 0x21;
 
     void saturation(int s);
     void frameControl(int hStart, int hStop, int vStart, int vStop);
     void QQVGA();
     void QQVGARGB565();
 
-public:
-    OV7670(const int VSYNC, const int HREF, const int XCLK, const int PCLK, const int D0,
-           const int D1, const int D2, const int D3, const int D4, const int D5,
-           const int D6, const int D7);
+   public:
+    OV7670(const int VSYNC, const int HREF, const int XCLK, const int PCLK,
+           const int D0, const int D1, const int D2, const int D3, const int D4,
+           const int D5, const int D6, const int D7);
 
     // camera registers
     static const int REG_GAIN = 0x00;
@@ -31,11 +29,11 @@ public:
     static const int REG_COM7 = 0x12;
     static const int COM7_RGB = 0x04;
     static const int REG_COM8 = 0x13;
-    static const int COM8_FASTAEC = 0x80; // Enable fast AGC/AEC
-    static const int COM8_AECSTEP = 0x40; // Unlimited AEC step size
-    static const int COM8_BFILT = 0x20;   // Band filter enable
-    static const int COM8_AGC = 0x04;     // Auto gain enable
-    static const int COM8_AWB = 0x02;     // White balance enable
+    static const int COM8_FASTAEC = 0x80;  // Enable fast AGC/AEC
+    static const int COM8_AECSTEP = 0x40;  // Unlimited AEC step size
+    static const int COM8_BFILT = 0x20;    // Band filter enable
+    static const int COM8_AGC = 0x04;      // Auto gain enable
+    static const int COM8_AWB = 0x02;      // White balance enable
     static const int COM8_AEC = 0x0;
     static const int REG_COM9 = 0x14;
     static const int REG_COM10 = 0x15;
