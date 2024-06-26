@@ -1,8 +1,3 @@
-// parts of his code are taken from
-// https://github.com/igrr/esp32-cam-demo
-// by Ivan Grokhotkov
-// released under Apache License 2.0
-
 #pragma once
 
 #include "DMABuffer.h"
@@ -14,6 +9,12 @@
 #include "soc/i2s_struct.h"
 #include "soc/io_mux_reg.h"
 #include "soc/soc.h"
+
+enum class i2s_sampling_mode_t : uint8_t {
+    SM_0A0B_0B0C = 0,
+    SM_0A0B_0C0D = 1,
+    SM_0A00_0B00 = 3
+};
 
 class I2SCamera {
    public:
@@ -31,21 +32,6 @@ class I2SCamera {
     static int framePointer;
     static int frameBytes;
     static volatile bool stopSignal;
-
-    typedef enum {
-        /* camera sends byte sequence: s1, s2, s3, s4, ...
-         * fifo receives: 00 s1 00 s2, 00 s2 00 s3, 00 s3 00 s4, ...
-         */
-        SM_0A0B_0B0C = 0,
-        /* camera sends byte sequence: s1, s2, s3, s4, ...
-         * fifo receives: 00 s1 00 s2, 00 s3 00 s4, ...
-         */
-        SM_0A0B_0C0D = 1,
-        /* camera sends byte sequence: s1, s2, s3, s4, ...
-         * fifo receives: 00 s1 00 00, 00 s2 00 00, 00 s3 00 00, ...
-         */
-        SM_0A00_0B00 = 3,
-    } i2s_sampling_mode_t;
 
     static inline void i2sConfReset() {
         const uint32_t lc_conf_reset_flags =

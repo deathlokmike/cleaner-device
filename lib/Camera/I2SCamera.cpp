@@ -1,8 +1,5 @@
 #include "I2SCamera.h"
 
-#include "Globals.h"
-#include "esp_log.h"
-
 int I2SCamera::blocksReceived = 0;
 int I2SCamera::framesReceived = 0;
 int I2SCamera::xres = 160;
@@ -65,6 +62,7 @@ void I2SCamera::i2sRun() {
     blocksReceived = 0;
     dmaBufferActive = 0;
     framePointer = 0;
+    ESP_LOGD(cameraLogTag, "Get sample count");
     I2S0.rx_eof_num = dmaBuffer[0]->sampleCount();
     I2S0.in_link.addr = (uint32_t) & (dmaBuffer[0]->descriptor);
     I2S0.in_link.start = 1;
@@ -74,6 +72,7 @@ void I2SCamera::i2sRun() {
     esp_intr_enable(i2sInterruptHandle);
     esp_intr_enable(vSyncInterruptHandle);
     I2S0.conf.rx_start = 1;
+    ESP_LOGD(cameraLogTag, "Done");
 }
 
 bool I2SCamera::initVSync(int pin) {
@@ -84,7 +83,7 @@ bool I2SCamera::initVSync(int pin) {
     if (gpio_isr_register(&vSyncInterrupt, (void *)"vSyncInterrupt",
                           ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_IRAM,
                           &vSyncInterruptHandle) != ESP_OK) {
-        ESP_LOGW(cameraLogTag, "Failed Initializing VSYNC");
+        ESP_LOGE(cameraLogTag, "Failed Initializing VSYNC");
         return false;
     }
     ESP_LOGD(cameraLogTag, "Done");
@@ -100,15 +99,22 @@ bool I2SCamera::init(const int XRES, const int YRES, const int VSYNC,
     xres = XRES;
     yres = YRES;
     frameBytes = XRES * YRES * 2;
+    ESP_LOGD(cameraLogTag, "I2S Init");
+
     frame = (unsigned char *)malloc(frameBytes);
     if (!frame) {
-        ESP_LOGW(cameraLogTag, "Not enough memory for frame buffer");
+        ESP_LOGE(cameraLogTag, "Not enough memory for frame buffer");
         return false;
     }
-    i2sInit(VSYNC, HREF, PCLK, D0, D1, D2, D3, D4, D5, D6, D7);
-    dmaBufferInit(xres * 2 *
-                  2);  // two bytes per dword packing, two bytes per pixel
-    initVSync(VSYNC);
+    if (!i2sInit(VSYNC, HREF, PCLK, D0, D1, D2, D3, D4, D5, D6, D7)) {
+        ESP_LOGE(cameraLogTag, "Failed initializing i2s");
+        return false;
+    }
+    if (!initVSync(VSYNC)) {
+        ESP_LOGE(cameraLogTag, "Failed initializing VSYNC");
+        return false;
+    }
+    dmaBufferInit(xres * 2 * 2);
     return true;
 }
 
@@ -116,6 +122,7 @@ bool I2SCamera::i2sInit(const int VSYNC, const int HREF, const int PCLK,
                         const int D0, const int D1, const int D2, const int D3,
                         const int D4, const int D5, const int D6,
                         const int D7) {
+    esp_err_t err;
     int pins[] = {VSYNC, HREF, PCLK, D0, D1, D2, D3, D4, D5, D6, D7};
     gpio_config_t conf = {.pin_bit_mask = 0,
                           .mode = GPIO_MODE_INPUT,
@@ -124,7 +131,12 @@ bool I2SCamera::i2sInit(const int VSYNC, const int HREF, const int PCLK,
                           .intr_type = GPIO_INTR_DISABLE};
     for (int i = 0; i < sizeof(pins) / sizeof(gpio_num_t); ++i) {
         conf.pin_bit_mask = 1LL << pins[i];
-        gpio_config(&conf);
+        err = gpio_config(&conf);
+        if (err != ESP_OK) {
+            ESP_LOGE(cameraLogTag, "Failed to configure GPIO %d: %s", pins[i],
+                     esp_err_to_name(err));
+            return false;
+        }
     }
 
     // Route input GPIOs to I2S peripheral using GPIO matrix, last parameter is
@@ -147,8 +159,8 @@ bool I2SCamera::i2sInit(const int VSYNC, const int HREF, const int PCLK,
     gpio_matrix_in(0x30, I2S0I_DATA_IN15_IDX, false);
 
     gpio_matrix_in(VSYNC, I2S0I_V_SYNC_IDX, true);
-    gpio_matrix_in(0x38, I2S0I_H_SYNC_IDX,
-                   false);  // 0x30 sends 0, 0x38 sends 1
+    // 0x30 sends 0, 0x38 sends 1
+    gpio_matrix_in(0x38, I2S0I_H_SYNC_IDX, false);
     gpio_matrix_in(HREF, I2S0I_H_ENABLE_IDX, false);
     gpio_matrix_in(PCLK, I2S0I_WS_IN_IDX, false);
 
@@ -172,9 +184,10 @@ bool I2SCamera::i2sInit(const int VSYNC, const int HREF, const int PCLK,
     I2S0.fifo_conf.dscr_en = 1;
     // FIFO configuration
     // two bytes per dword packing
+    // pack two bytes in one dword see
+    // :https://github.com/igrr/esp32-cam-demo/issues/29
     I2S0.fifo_conf.rx_fifo_mod =
-        SM_0A0B_0C0D;  // pack two bytes in one dword see
-                       // :https://github.com/igrr/esp32-cam-demo/issues/29
+        static_cast<uint32_t>(i2s_sampling_mode_t::SM_0A0B_0C0D);
     I2S0.fifo_conf.rx_fifo_mod_force_en = 1;
     I2S0.conf_chan.rx_chan_mod = 1;
     // Clear flags which are used in I2S serial mode
@@ -206,8 +219,10 @@ void I2SCamera::dmaBufferInit(int bytes) {
 
 void I2SCamera::dmaBufferDeinit() {
     if (!dmaBuffer) return;
-    for (int i = 0; i < dmaBufferCount; i++) delete (dmaBuffer[i]);
-    delete (dmaBuffer);
-    dmaBuffer = 0;
+    for (size_t i = 0; i < dmaBufferCount; ++i) {
+        delete dmaBuffer[i];
+    }
+    delete[] dmaBuffer;
+    dmaBuffer = nullptr;
     dmaBufferCount = 0;
 }

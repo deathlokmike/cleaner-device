@@ -3,7 +3,7 @@
 
 class OV7670 : public I2SCamera {
    protected:
-    static const int ADDR = 0x21;
+    static const int ADDR = 0x42;
 
     void saturation(int s);
     void frameControl(int hStart, int hStop, int vStart, int vStop);
