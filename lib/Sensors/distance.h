@@ -1,12 +1,11 @@
 #pragma once
 
-class Distance
-{
-private:
+class Distance {
+   private:
     long front = 0;
     long side = 0;
 
-public:
+   public:
     void setFront(long value);
     void setSide(long value);
     long getFront();

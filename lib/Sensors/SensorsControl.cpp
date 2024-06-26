@@ -1,12 +1,12 @@
 #include "SensorsControl.h"
+
 #include "Globals.h"
 #include "esp_log.h"
 
 SensorsControl::SensorsControl() {}
 
 void SensorsControl::attach(uint8_t USFrontTrig, uint8_t USFrontEcho,
-                            uint8_t USSideTrig, uint8_t USSideEcho)
-{
+                            uint8_t USSideTrig, uint8_t USSideEcho) {
     this->frontTrig = USFrontTrig;
     this->frontEcho = USFrontEcho;
     this->sideTrig = USSideTrig;
@@ -19,8 +19,7 @@ void SensorsControl::attach(uint8_t USFrontTrig, uint8_t USFrontEcho,
     pinMode(USSideEcho, INPUT);
 };
 
-long SensorsControl::getSensorDistance(uint8_t trig, uint8_t echo)
-{
+long SensorsControl::getSensorDistance(uint8_t trig, uint8_t echo) {
     digitalWrite(trig, LOW);
     delayMicroseconds(2);
     digitalWrite(trig, HIGH);
@@ -30,15 +29,14 @@ long SensorsControl::getSensorDistance(uint8_t trig, uint8_t echo)
     return (duration * 0.017);
 }
 
-void SensorsControl::debug()
-{
+void SensorsControl::debug() {
     ESP_LOGD(autoModeLogTag, "Front distance: %d", distance.getFront());
     ESP_LOGD(autoModeLogTag, "Side distance: %d", distance.getSide());
 }
 
-Distance SensorsControl::getDistance()
-{
-    distance.setFront(this->getSensorDistance(this->frontTrig, this->frontEcho));
+Distance SensorsControl::getDistance() {
+    distance.setFront(
+        this->getSensorDistance(this->frontTrig, this->frontEcho));
     distance.setSide(this->getSensorDistance(this->sideTrig, this->sideEcho));
     this->debug();
     return distance;
