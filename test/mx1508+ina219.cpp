@@ -12,23 +12,37 @@
  * INA219_WE ina219 = INA219_WE(&Wire, I2C_ADDRESS); -> all together
  */
 INA219_WE ina219 = INA219_WE(I2C_ADDRESS);
-const int PinA1 = 26;
-const int PinA2 = 25;
 byte speed = 255;
 
-void forward() {
-    analogWrite(PinA1, speed);
-    analogWrite(PinA2, 0);
-}
-
 void backward() {
-    analogWrite(PinA1, 0);
-    analogWrite(PinA2, speed);
+    analogWrite(IN1, 0);
+    analogWrite(IN2, speed);
+    analogWrite(IN3, 0);
+    analogWrite(IN4, speed);
 }
-
+void forward() {
+    analogWrite(IN1, speed);
+    analogWrite(IN2, 0);
+    analogWrite(IN3, speed);
+    analogWrite(IN4, 0);
+}
+void left() {
+    analogWrite(IN1, speed);
+    analogWrite(IN2, 0);
+    analogWrite(IN3, 0);
+    analogWrite(IN4, speed);
+}
+void right() {
+    analogWrite(IN1, 0);
+    analogWrite(IN2, speed);
+    analogWrite(IN3, speed);
+    analogWrite(IN4, 0);
+}
 void stop() {
-    analogWrite(PinA1, 0);
-    analogWrite(PinA2, 0);
+    analogWrite(IN1, 0);
+    analogWrite(IN2, 0);
+    analogWrite(IN3, 0);
+    analogWrite(IN4, 0);
     delay(2000);
 }
 
@@ -106,15 +120,14 @@ void setup() {
     // (millivolts) you detect at zero current
 }
 
-void loop() {
+void printVoltage() {
     float shuntVoltage_mV = 0.0;
     float loadVoltage_V = 0.0;
     float busVoltage_V = 0.0;
     float current_mA = 0.0;
     float power_mW = 0.0;
     bool ina219_overflow = false;
-    forward();
-    delay(1000);
+
     shuntVoltage_mV = ina219.getShuntVoltage_mV();
     busVoltage_V = ina219.getBusVoltage_V();
     current_mA = ina219.getCurrent_mA();
@@ -138,5 +151,17 @@ void loop() {
         Serial.println("Overflow! Choose higher PGAIN");
     }
     Serial.println();
+}
+
+void loop() {
+    left();
+    delay(1000);
+    printVoltage();
+    delay(1000);
+    stop();
+    right();
+    delay(1000);
+    printVoltage();
+    delay(1000);
     stop();
 }
