@@ -1,25 +1,27 @@
 #pragma once
 #include <Arduino.h>
 
-enum wheel_directions { forward = 23, backward = 31, boost = 100, stop = 0 };
+enum wheel_speed : uint8_t {
+    forward = 190,
+    backward = 128,
+    turn = forward - 50
+};
 
 class WheelControl {
    private:
-    uint8_t ina;
-    uint8_t inb;
-    uint8_t pwm;
+    uint8_t in1;
+    uint8_t in2;
+    uint8_t in3;
+    uint8_t in4;
 
-    wheel_directions currentDirection = stop;
-
-    void debug();
     void setup();
-
-    void goForward();
-    void goBackward();
 
    public:
     WheelControl();
-    void attach(uint8_t INA, uint8_t INB, uint8_t PWM);
-    void go(wheel_directions direction);
-    void stop_();
+    void attach(uint8_t in1_, uint8_t in2_, uint8_t in3_, uint8_t in4_);
+    void forward();
+    void backward();
+    void left();
+    void right();
+    void stop();
 };

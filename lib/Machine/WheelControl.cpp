@@ -1,62 +1,53 @@
 #include "WheelControl.h"
 
-#include "Globals.h"
-#include "esp_log.h"
-
 WheelControl::WheelControl() {};
 
-void WheelControl::attach(uint8_t INA, uint8_t INB, uint8_t PWM) {
-    ina = INA;
-    inb = INB;
-    pwm = PWM;
-    this->setup();
-}
-
-void WheelControl::debug() {
-    ESP_LOGD(autoModeLogTag, "Speed: %d", currentDirection);
+void WheelControl::attach(uint8_t in1_, uint8_t in2_, uint8_t in3_, uint8_t in4_) {
+    in1 = in1_;
+    in2 = in2_;
+    in3 = in3_;
+    in4 = in4_;
+    setup();
 }
 
 void WheelControl::setup() {
-    ledcSetup(2, 20000, 8);
-    ledcAttachPin(pwm, 2);
-    pinMode(ina, OUTPUT);
-    pinMode(inb, OUTPUT);
+    pinMode(in1, OUTPUT);
+    pinMode(in2, OUTPUT);
+    pinMode(in3, OUTPUT);
+    pinMode(in4, OUTPUT);
 }
 
-void WheelControl::go(wheel_directions direction) {
-    if (currentDirection != direction) {
-        if (direction == forward)
-            this->goForward();
-        else if (direction == backward)
-            this->goBackward();
-
-        if (currentDirection == stop) {
-            analogWrite(pwm, boost);
-            vTaskDelay(pdMS_TO_TICKS(100));
-        }
-
-        currentDirection = direction;
-        analogWrite(pwm, currentDirection);
-    }
-    this->debug();
+void WheelControl::backward() {
+    analogWrite(in1, 0);
+    analogWrite(in2, wheel_speed::backward);
+    analogWrite(in3, 0);
+    analogWrite(in4, wheel_speed::backward);
 }
 
-void WheelControl::stop_() {
-    currentDirection = stop;
-    analogWrite(pwm, currentDirection);
-    digitalWrite(ina, HIGH);
-    digitalWrite(inb, HIGH);
-    vTaskDelay(pdMS_TO_TICKS(100));
-    digitalWrite(ina, LOW);
-    digitalWrite(inb, LOW);
+void WheelControl::forward() {
+    analogWrite(in1, wheel_speed::forward);
+    analogWrite(in2, 0);
+    analogWrite(in3, wheel_speed::forward);
+    analogWrite(in4, 0);
 }
 
-void WheelControl::goBackward() {
-    digitalWrite(ina, HIGH);
-    digitalWrite(inb, LOW);
+void WheelControl::left() {
+    analogWrite(in1, wheel_speed::turn);
+    analogWrite(in2, 0);
+    analogWrite(in3, 0);
+    analogWrite(in4, wheel_speed::turn);
 }
 
-void WheelControl::goForward() {
-    digitalWrite(ina, LOW);
-    digitalWrite(inb, HIGH);
+void WheelControl::right() {
+    analogWrite(in1, 0);
+    analogWrite(in2, wheel_speed::turn);
+    analogWrite(in3, wheel_speed::turn);
+    analogWrite(in4, 0);
+}
+
+void WheelControl::stop() {
+    analogWrite(in1, 0);
+    analogWrite(in2, 0);
+    analogWrite(in3, 0);
+    analogWrite(in4, 0);
 }
