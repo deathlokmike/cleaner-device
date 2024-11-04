@@ -15,17 +15,15 @@
 #define CAM_VSYNC 34
 #define CAM_HREF 35
 
-#define FRONT_ECHO 18
-#define FRONT_TRIG 19
+#define FRONT_ECHO 39
+#define SIDE_ECHO 36
 
-#define SIDE_ECHO 39
-#define SIDE_TRIG 2
+#define IN1 2
+#define IN2 18
+#define IN3 5
+#define IN4 19
 
-#define VNH_INA 5
-#define VNH_INB 26
-#define VNH_PWM 25
-
-#define SERVO_PWM 23
+#define TRIG 25
 
 const char *ssid = "...";
 const char *password = "...";

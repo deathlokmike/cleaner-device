@@ -1,51 +1,42 @@
-#include "Config.h"
-#include "Globals.h"
-#include "esp_log.h"
 #include <Arduino.h>
 #include <Wire.h>
-#include <AutoMode.h>
+
+#include "Config.h"
+#include "Globals.h"
+#include "XClk.h"
+#include "esp_log.h"
 
 byte error, address;
 
 int nDevices;
 
-void setup()
-{
+void setup() {
     Serial.begin(USB_SPEED);
-
+    if (!ClockEnable(CAM_XCLK, 20000000)) return;
     ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
     Wire.begin();
     ESP_LOGD(mainLogTag, "Wire started");
 }
 
-void loop()
-{
+void loop() {
     ESP_LOGD(mainLogTag, "Scanning");
     nDevices = 0;
-    for (address = 1; address < 127; address++)
-    {
+    for (address = 1; address < 127; address++) {
         Wire.beginTransmission(address);
         error = Wire.endTransmission();
-        if (error == 0)
-        {
-            if (address < 16)
-            {
-                ESP_LOGD(mainLogTag, "I2C device found at address 0x0%X", address);
-            }
-            else
-            {
-                ESP_LOGD(mainLogTag, "I2C device found at address 0x%X", address);
+        if (error == 0) {
+            if (address < 16) {
+                ESP_LOGD(mainLogTag, "I2C device found at address 0x0%X",
+                         address);
+            } else {
+                ESP_LOGD(mainLogTag, "I2C device found at address 0x%X",
+                         address);
             }
             nDevices++;
-        }
-        else if (error == 4)
-        {
-            if (address < 16)
-            {
+        } else if (error == 4) {
+            if (address < 16) {
                 ESP_LOGD(mainLogTag, "Unknown error at address 0x0%X", address);
-            }
-            else
-            {
+            } else {
                 ESP_LOGD(mainLogTag, "Unknown error at address 0x%X", address);
             }
         }
