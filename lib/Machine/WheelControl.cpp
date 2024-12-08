@@ -2,7 +2,8 @@
 
 WheelControl::WheelControl() {};
 
-void WheelControl::attach(uint8_t in1_, uint8_t in2_, uint8_t in3_, uint8_t in4_) {
+void WheelControl::attach(uint8_t in1_, uint8_t in2_, uint8_t in3_,
+                          uint8_t in4_) {
     in1 = in1_;
     in2 = in2_;
     in3 = in3_;
@@ -18,17 +19,18 @@ void WheelControl::setup() {
 }
 
 void WheelControl::backward() {
-    analogWrite(in1, 0);
-    analogWrite(in2, wheel_speed::backward);
-    analogWrite(in3, 0);
-    analogWrite(in4, wheel_speed::backward);
+    analogWrite(in1, wheel_speed::backward);
+    analogWrite(in2, 0);
+    analogWrite(in3, wheel_speed::backward);
+    analogWrite(in4, 0);
 }
 
 void WheelControl::forward() {
-    analogWrite(in1, wheel_speed::forward);
-    analogWrite(in2, 0);
-    analogWrite(in3, wheel_speed::forward);
-    analogWrite(in4, 0);
+    analogWrite(in1, 0);
+    analogWrite(in2, wheel_speed::forward);
+    delay(6);  // compensation for out-of-sync
+    analogWrite(in3, 0);
+    analogWrite(in4, wheel_speed::forward);
 }
 
 void WheelControl::left() {

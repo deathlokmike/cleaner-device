@@ -4,7 +4,7 @@
 enum wheel_speed : uint8_t {
     forward = 190,
     backward = 128,
-    turn = forward - 50
+    turn = forward - 125
 };
 
 class WheelControl {

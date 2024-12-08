@@ -1,51 +1,27 @@
 #include <ArduinoWebsockets.h>
-#include <AutoMode.h>
+#include <HCSR04.h>
+#include <INA219_WE.h>
+#include <MPU6050.h>
 #include <WiFi.h>
 #include <Wire.h>
 
 #include "Config.h"
-#include "OV7670.h"
+#include "Globals.h"
+#include "WheelControl.h"
+#include "esp_log.h"
 
-TaskHandle_t TaskMachineHandler = NULL;
-TaskHandle_t TaskCameraHandler = NULL;
-HTTPClient client;
 websockets::WebsocketsClient wsClient;
-OV7670 *camera;
-AutoMode autoMode = AutoMode();
+INA219_WE ina219;
+MPU6050 accgyro;
+WheelControl wheels = WheelControl();
+TaskHandle_t movementTaskHandle = NULL;
 
-void takeImageTask(void *pvParameters);
-void machineControlTask(void *pvParameters);
-void superLoopTask(void *pvParameters);
-// void checkSystemTask(void *pvParameters);
-// void checkCameraTask(void *pvParameters);
+int16_t ax, ay, az, gx, gy, gz;
+float currentAngle = 0;
 
-void takeImageAndSendPostRequest() {
-    camera->oneFrame();
-    client.begin(endpoint);
-    int httpResponseCode =
-        client.sendRequest("POST", camera->frame, camera->frameBytes);
-    if (httpResponseCode > 0) {
-        String payload = client.getString();
-        ESP_LOGI(mainLogTag, "HTTP: [%d] %s", httpResponseCode, payload);
-    } else {
-        ESP_LOGW(mainLogTag, "HTTP-response error");
-    }
-    client.end();
-}
-
-// void checkSystemTask(void *pvParameters) {
-//   ESP_LOGD(mainLogTag, "[CST]: started");
-//   autoMode.checkSystems();
-//   wsClient.send("done");
-//   vTaskDelete(NULL);
-// }
-
-// void checkCameraTask(void *pvParameters) {
-//   ESP_LOGD(mainLogTag, "[CCT]: started");
-//   takeImageAndSendPostRequest();
-//   wsClient.send("done");
-//   vTaskDelete(NULL);
-// }
+void mainLoop(void *pvParameters);
+void sensorTask(void *pvParameters);
+void movementTask(void *pvParameters);
 
 void onEventsCallback(websockets::WebsocketsEvent event, String data) {
     using websockets::WebsocketsEvent;
@@ -62,114 +38,173 @@ void onEventsCallback(websockets::WebsocketsEvent event, String data) {
 
 void onMessageCallback(websockets::WebsocketsMessage message) {
     if (message.data() == "start") {
-        vTaskResume(TaskMachineHandler);
-        vTaskResume(TaskCameraHandler);
         ESP_LOGI(mainLogTag, "Machine started");
+        if (movementTaskHandle != NULL) {
+            vTaskResume(movementTaskHandle);
+        }
     } else if (message.data() == "stop") {
-        vTaskSuspend(TaskMachineHandler);
-        vTaskSuspend(TaskCameraHandler);
-        autoMode.stop_();
         ESP_LOGI(mainLogTag, "Machine stopped");
-    }
-    // else if (message.data() == "check_system") {
-    //   xTaskCreatePinnedToCore(checkSystemTask, "CST", 2048, NULL, 1,
-    //                           &TaskCameraHandler, 0);
-    // } else if (message.data() == "check_camera") {
-    //   xTaskCreatePinnedToCore(checkCameraTask, "CCT", 2048, NULL, 1,
-    //                           &TaskCameraHandler, 0);
-    // }
-    else if (message.data() == "suspend") {
-        vTaskSuspend(TaskMachineHandler);
-        autoMode.stop_();
-        ESP_LOGI(mainLogTag, "Machine stopped");
+        if (movementTaskHandle != NULL) {
+            vTaskSuspend(movementTaskHandle);
+            wheels.stop();
+        }
+    } else if (message.data() == "suspend") {
+        ESP_LOGI(mainLogTag, "Machine suspended");
     } else if (message.data() == "resume") {
-        vTaskResume(TaskMachineHandler);
+        ESP_LOGI(mainLogTag, "Machine resumed");
     }
 }
 
-void connectToWebSocket() {
+void connectToServer() {
+    wsClient = websockets::WebsocketsClient();
+    wsClient.onMessage(onMessageCallback);
+    wsClient.onEvent(onEventsCallback);
+    ESP_LOGD(mainLogTag, "Connect to server");
     while (!wsClient.connect(websocket_server)) {
-        ESP_LOGW(mainLogTag,
-                 "Failed to connect to WebSocket server, retrying...");
+        ESP_LOGW(mainLogTag, "Failed to connect to server, retrying...");
         vTaskDelay(5000);
     }
 
-    ESP_LOGI(mainLogTag, "Connected to WebSocket server");
+    ESP_LOGD(mainLogTag, "Connected to server");
     String mac = "mac:" + String(WiFi.macAddress());
     wsClient.send(mac);
 }
 
+void connectToWifi() {
+    WiFi.begin(ssid, password);
+    WiFi.setSleep(false);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+    }
+    ESP_LOGI(mainLogTag, "Connected to WiFi");
+}
+
 void setup() {
     Serial.begin(USB_SPEED);
+    wheels.attach(IN1, IN2, IN3, IN4);
+    wheels.stop();
+
     Wire.begin();
     Wire.setClock(100000);
     ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
 
-    camera = new OV7670(CAM_VSYNC, CAM_HREF, CAM_XCLK, CAM_PCLK, CAM_D0, CAM_D1,
-                        CAM_D2, CAM_D3, CAM_D4, CAM_D5, CAM_D6, CAM_D7);
-
-    autoMode.attachSensors(FRONT_TRIG, FRONT_ECHO, SIDE_TRIG, SIDE_ECHO);
-    autoMode.attachWheel(VNH_INA, VNH_INB, VNH_PWM);
-    autoMode.attachSteering(SERVO_PWM);
-
-    ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
-
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(1000);
+    if (!ina219.init()) {
+        ESP_LOGE(mainLogTag, "INA219 initialization failed!");
+        return;
     }
+    ESP_LOGI(mainLogTag, "INA219: Successful");
+    connectToWifi();
+    connectToServer();
 
-    ESP_LOGI(mainLogTag, "Connected to WiFi");
-    wsClient.onMessage(onMessageCallback);
-    wsClient.onEvent(onEventsCallback);
-    connectToWebSocket();
+    accgyro.initialize();
+    accgyro.setFullScaleGyroRange(MPU6050_GYRO_FS_250);
+    ESP_LOGI(mainLogTag, "Calibrate MPU (20)");
+    accgyro.CalibrateGyro(20);
+    accgyro.CalibrateAccel(20);
+    ESP_LOGI(mainLogTag, "MPU6050: Successful");
 
-    xTaskCreatePinnedToCore(superLoopTask, "SLT", 32768, NULL, 1, NULL, 0);
+    byte *echoPins = new byte[2]{FRONT_ECHO, SIDE_ECHO};
+    HCSR04.begin(TRIG, echoPins, 2);
+
+    xTaskCreatePinnedToCore(mainLoop, "main", 32768, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(sensorTask, "sensor", 8192, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(movementTask, "movement", 4096, NULL, 1,
+                            &movementTaskHandle, 1);
+    vTaskSuspend(movementTaskHandle);
 }
 
-void superLoopTask(void *pvParameters) {
-    ESP_LOGD(mainLogTag, "[SLT]: started");
-    xTaskCreatePinnedToCore(machineControlTask, "MCT", 2048, NULL, 1,
-                            &TaskMachineHandler, 1);
-    xTaskCreatePinnedToCore(takeImageTask, "TIT", 16384, NULL, 1,
-                            &TaskCameraHandler, 0);
+void sensorTask(void *pvParameters) {
+    ESP_LOGD(mainLogTag, "[sensorTask]: started");
+    float busVoltage, current_mA;
+    uint8_t poolLoop = 0;
 
-    if (TaskCameraHandler == NULL) {
-        ESP_LOGW(mainLogTag, "TIT: Failed to create");
-    } else if (TaskMachineHandler == NULL) {
-        ESP_LOGW(mainLogTag, "MCT: Failed to create");
-    }
+    String data;
+    while (true) {
+        busVoltage = ina219.getBusVoltage_V();
+        current_mA = ina219.getCurrent_mA();
+        double *distances = HCSR04.measureDistanceCm();
 
-    else {
-        vTaskSuspend(TaskCameraHandler);
-        vTaskSuspend(TaskMachineHandler);
-        ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
-        while (true) {
-            if (wsClient.available()) {
+        data = "vol:" + String(busVoltage) + ",cur:" + String(current_mA) +
+               ",ang:" + String(currentAngle) + ",df:" + String(distances[0]) +
+               ",ds:" + String(distances[1]);
+
+        poolLoop += 1;
+        if (wsClient.available()) {
+            if (poolLoop == 4) {
+                poolLoop = 0;
                 wsClient.poll();
+            } else {
+                wsClient.send(data);
             }
-            vTaskDelay(pdMS_TO_TICKS(1));
+        } else {
+            ESP_LOGD(mainLogTag, "Wi-fi status: %d", WiFi.status());
+            if (WiFi.status() != WL_CONNECTED) {
+                connectToWifi();
+            }
+            wsClient.close();
+            connectToServer();
         }
+        vTaskDelay(pdMS_TO_TICKS(250));
     }
     vTaskDelete(NULL);
 }
 
-void takeImageTask(void *pvParameters) {
-    ESP_LOGD(mainLogTag, "[TIT]: started");
+void rotate(float angle) {
+    // Alpha - beta filter
+    static float alpha = 0.9;
+    static float beta = 0.0025;
+    float estimatedRate = 0;
+    float dt = 0;
+    float gyroZ = 0;
+    bool once = true;
+    long previousTime = 0;
+    currentAngle = 0;
     while (true) {
-        ESP_LOGD(mainLogTag, "[TIT]: iter");
-        takeImageAndSendPostRequest();
-        vTaskDelay(pdMS_TO_TICKS(1));
+        accgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+        if (once) {
+            wheels.left();
+            once = false;
+        }
+
+        gyroZ = gz / 131;
+        long currentTime = millis();
+        dt = (currentTime - previousTime) / 1000.0;
+        previousTime = currentTime;
+
+        float predictedAngle = currentAngle + estimatedRate * dt;
+        float predictedRate = estimatedRate;
+
+        float residual = gyroZ - predictedRate;
+        currentAngle = predictedAngle + alpha * residual * dt;
+        estimatedRate = predictedRate + beta * residual;
+        ESP_LOGD(mainLogTag, "currentAngle: %f", currentAngle);
+        if (currentAngle >= angle) {
+            wheels.stop();
+            return;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
+}
+
+void movementTask(void *pvParameters) {
+    while (true) {
+        wheels.forward();
+        vTaskDelay(pdMS_TO_TICKS(2000));
+        wheels.stop();
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        rotate(69.5);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
     vTaskDelete(NULL);
 }
 
-void machineControlTask(void *pvParameters) {
-    ESP_LOGD(mainLogTag, "[MCT]: started");
+void mainLoop(void *pvParameters) {
+    ESP_LOGD(mainLogTag, "[main]: started");
+    ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
     while (true) {
-        ESP_LOGD(mainLogTag, "[MCT]: iter");
-        autoMode.run();
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(10000));
     }
     vTaskDelete(NULL);
 }
