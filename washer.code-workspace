@@ -1,13 +1,17 @@
 {
 	"folders": [
-		{
-			"name": "cleaner",
-			"path": "."
-		}
-	],
+        {
+            "name": "cleaner",
+            "path": "."
+        },
+        {
+            "path": "../cleaner_server"
+        }
+    ],
 	"settings": {
     "editor.detectIndentation": false,
     "files.associations": {
+        "*.rmd": "markdown",
         "*.tcc": "cpp",
         "iterator": "cpp",
         "random": "cpp",
@@ -28,7 +32,9 @@
         "functional": "cpp",
         "tuple": "cpp",
         "type_traits": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "cmath": "cpp",
+        "chrono": "cpp"
     }
 	}
 }
