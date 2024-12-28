@@ -11,6 +11,8 @@
 	"settings": {
     "editor.detectIndentation": false,
     "files.associations": {
+        "*.ndjson": "jsonl",
+        "*.dbclient-js": "javascript",
         "*.rmd": "markdown",
         "*.tcc": "cpp",
         "iterator": "cpp",
@@ -34,7 +36,15 @@
         "type_traits": "cpp",
         "utility": "cpp",
         "cmath": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "__bit_reference": "cpp",
+        "__node_handle": "cpp",
+        "bitset": "cpp",
+        "limits": "cpp",
+        "locale": "cpp",
+        "ratio": "cpp",
+        "variant": "cpp",
+        "ios": "cpp"
     }
 	}
 }

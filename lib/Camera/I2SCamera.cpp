@@ -64,7 +64,7 @@ void I2SCamera::i2sRun() {
     framePointer = 0;
     ESP_LOGD(cameraLogTag, "Get sample count");
     I2S0.rx_eof_num = dmaBuffer[0]->sampleCount();
-    I2S0.in_link.addr = (uint32_t) & (dmaBuffer[0]->descriptor);
+    I2S0.in_link.addr = (uint32_t)&(dmaBuffer[0]->descriptor);
     I2S0.in_link.start = 1;
     I2S0.int_clr.val = I2S0.int_raw.val;
     I2S0.int_ena.val = 0;

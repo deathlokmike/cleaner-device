@@ -36,6 +36,5 @@ void loop() {
         } else {
         }
         http.end();
-    } else {
-    }
+    } 
 }
