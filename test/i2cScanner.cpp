@@ -6,7 +6,7 @@
 #include "XClk.h"
 #include "esp_log.h"
 
-byte error, address;
+byte address;
 
 int nDevices;
 
@@ -20,10 +20,11 @@ void setup() {
 
 void loop() {
     ESP_LOGD(mainLogTag, "Scanning");
+    TwoWire *_wire = &Wire;
     nDevices = 0;
     for (address = 1; address < 127; address++) {
-        Wire.beginTransmission(address);
-        error = Wire.endTransmission();
+        _wire->beginTransmission(address);
+        uint8_t error = _wire->endTransmission();
         if (error == 0) {
             if (address < 16) {
                 ESP_LOGD(mainLogTag, "I2C device found at address 0x0%X",
