@@ -4,9 +4,8 @@ bool OV7670::init(const uint8_t VSYNC, const uint8_t HREF, const uint8_t XCLK,
                   const uint8_t PCLK, const uint8_t D0, const uint8_t D1,
                   const uint8_t D2, const uint8_t D3, const uint8_t D4,
                   const uint8_t D5, const uint8_t D6, const uint8_t D7) {
-    ESP_LOGD(cameraLogTag, "Start init camera");
-    _wire->setClock(100000);
-    if (!ClockEnable(XCLK, 20000000)) return false;
+    ESP_LOGD(cameraLogTag, "Start init camera");    
+    if (!ClockEnable(XCLK, 10000000)) return false;
     if (!I2SCamera::init(160, 120, VSYNC, HREF, XCLK, PCLK, D0, D1, D2, D3, D4,
                          D5, D6, D7))
         return false;
@@ -16,8 +15,8 @@ bool OV7670::init(const uint8_t VSYNC, const uint8_t HREF, const uint8_t XCLK,
     while (!digitalRead(VSYNC));
     while (digitalRead(VSYNC));
     ESP_LOGD(cameraLogTag, "Done");
-    return ping();
-    // return QQVGARGB565();
+    if (!ping()) return false;
+    return QQVGARGB565();
 }
 
 bool OV7670::QQVGARGB565() {
@@ -31,10 +30,10 @@ bool OV7670::QQVGARGB565() {
 }
 
 bool OV7670::reset() {
-    ESP_LOGD(cameraLogTag, "reset");
+    ESP_LOGD(cameraLogTag, "Reset");
     const RegisterValue regValues[] = {
         {REG_COM7, 0b10000000},   // Reset
-        {REG_CLKRC, 0b10000000},  // Enable double clock
+        {REG_CLKRC, 0b10111111},  
         {REG_COM11, 0b00001010},  // Auto 50/60Hz detect + exposure
         {REG_COM7, 0b00000100},   // Select RGB
         {REG_COM15, 0b11010000}   // RGB565
@@ -98,9 +97,9 @@ bool OV7670::writeRegisters(const RegisterValue regValues[], uint8_t count) {
     for (size_t i = 0; i < count; ++i) {
         uint8_t i2cCode = writeRegister(regValues[i].reg, regValues[i].val);
         if (i2cCode != 0) {
-            ESP_LOGE(i2cLogTag, "Error: %d, Reg: 0x%X, Val: 0x%X", i2cCode,
+            ESP_LOGE(cameraLogTag, "Error: %d, Reg: 0x%X, Val: 0x%X", i2cCode,
                      regValues[i].reg, regValues[i].val);
-            return false;
+            // return false;
         }
     }
     return true;
@@ -113,45 +112,12 @@ uint8_t OV7670::writeRegister(uint8_t reg, uint8_t val) {
     return _wire->endTransmission();
 }
 
-void OV7670::scan() {
-    ESP_LOGD(cameraLogTag, "Scanning");
-    uint8_t nDevices = 0;
-    byte address;
-    for (address = 1; address < 127; address++) {
-        _wire->beginTransmission(address);
-        uint8_t error = _wire->endTransmission();
-        if (error == 0) {
-            if (address < 16) {
-                ESP_LOGD(cameraLogTag, "I2C device found at address 0x0%X",
-                         address);
-            } else {
-                ESP_LOGD(cameraLogTag, "I2C device found at address 0x%X",
-                         address);
-            }
-            ++nDevices;
-        } else if (error == 4) {
-            if (address < 16) {
-                ESP_LOGD(cameraLogTag, "Unknown error at address 0x0%X",
-                         address);
-            } else {
-                ESP_LOGD(cameraLogTag, "Unknown error at address 0x%X",
-                         address);
-            }
-        }
-    }
-    if (nDevices == 0)
-        ESP_LOGE(cameraLogTag, "No I2C devices found");
-    else
-        ESP_LOGD(cameraLogTag, "Done");
-}
-
 bool OV7670::ping() {
-    ESP_LOGD(cameraLogTag, "ping 0x%X", i2cAddress);
+    ESP_LOGD(cameraLogTag, "Ping 0x%X", i2cAddress);
     _wire->beginTransmission(i2cAddress);
     uint8_t error = _wire->endTransmission();
     if (error == 0) {
         return true;
     }
-    scan();
     return false;
 }

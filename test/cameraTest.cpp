@@ -14,7 +14,6 @@ void setup() {
         ESP_LOGE(mainLogTag, "Camera initialization failed!");
         return;
     }
-    camera.reset();
     ESP_LOGD(mainLogTag, "Memory allocated: %d", memBefore - ESP.getFreeHeap());
 }
 

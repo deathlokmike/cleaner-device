@@ -1,9 +1,11 @@
+#include <HTTPClient.h>
 #include <Wire.h>
 
 #include "Config.h"
 #include "OV7670.h"
 
 OV7670 camera;
+HTTPClient http;
 
 void setup() {
     Serial.begin(USB_SPEED);
@@ -14,10 +16,27 @@ void setup() {
         ESP_LOGE(mainLogTag, "Camera initialization failed!");
         return;
     }
-    camera.reset();
     ESP_LOGD(mainLogTag, "Memory allocated: %d", memBefore - ESP.getFreeHeap());
+    WiFi.begin(ssid, password);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
 }
 
 void loop() {
-    // camera.oneFrame();
+    if ((WiFi.status() == WL_CONNECTED)) {
+        camera.oneFrame();
+        http.begin(endpoint);
+
+        int httpResponseCode =
+            http.sendRequest("POST", camera.frame, camera.frameBytes);
+
+        if (httpResponseCode > 0) {
+            String payload = http.getString();
+            ESP_LOGD(mainLogTag, "Payload: %s", payload.c_str());
+        }
+        http.end();
+    }
 }
