@@ -4,7 +4,7 @@ bool OV7670::init(const uint8_t VSYNC, const uint8_t HREF, const uint8_t XCLK,
                   const uint8_t PCLK, const uint8_t D0, const uint8_t D1,
                   const uint8_t D2, const uint8_t D3, const uint8_t D4,
                   const uint8_t D5, const uint8_t D6, const uint8_t D7) {
-    ESP_LOGD(cameraLogTag, "Start init camera");    
+    ESP_LOGD(cameraLogTag, "Start init camera");
     if (!ClockEnable(XCLK, 10000000)) return false;
     if (!I2SCamera::init(160, 120, VSYNC, HREF, XCLK, PCLK, D0, D1, D2, D3, D4,
                          D5, D6, D7))
@@ -33,12 +33,13 @@ bool OV7670::reset() {
     ESP_LOGD(cameraLogTag, "Reset");
     const RegisterValue regValues[] = {
         {REG_COM7, 0b10000000},   // Reset
-        {REG_CLKRC, 0b10111111},  
+        {REG_COM7, 0b00000000},   // Fix error 2
+        {REG_CLKRC, 0b10000000},  // Enable double clock
         {REG_COM11, 0b00001010},  // Auto 50/60Hz detect + exposure
         {REG_COM7, 0b00000100},   // Select RGB
         {REG_COM15, 0b11010000}   // RGB565
     };
-    return writeRegisters(regValues, 5);
+    return writeRegisters(regValues, 6);
 }
 
 bool OV7670::QQVGA() {
@@ -99,7 +100,10 @@ bool OV7670::writeRegisters(const RegisterValue regValues[], uint8_t count) {
         if (i2cCode != 0) {
             ESP_LOGE(cameraLogTag, "Error: %d, Reg: 0x%X, Val: 0x%X", i2cCode,
                      regValues[i].reg, regValues[i].val);
-            // return false;
+            return false;
+        } else {
+            ESP_LOGD(cameraLogTag, "Successful: %d, Reg: 0x%X, Val: 0x%X",
+                     i2cCode, regValues[i].reg, regValues[i].val);
         }
     }
     return true;

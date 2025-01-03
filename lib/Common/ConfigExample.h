@@ -1,3 +1,5 @@
+#pragma once
+
 #define USB_SPEED 115200
 
 #define CAM_PCLK 33
@@ -28,4 +30,4 @@
 const char *ssid = "...";
 const char *password = "...";
 const char *websocket_server = "ws://192.168.1.163:8000/ws/cleaner";
-const char *endpoint = "http://192.168.1.163:8000/api/image";
+const String endpoint = "http://192.168.1.163:8000/api/image";
