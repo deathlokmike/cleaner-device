@@ -13,13 +13,12 @@ class OV7670 : public I2SCamera {
     TwoWire *_wire;
     uint8_t i2cAddress;
     bool QQVGARGB565();
-    uint8_t writeRegister(uint8_t reg, byte val);
+    uint8_t writeRegister(uint8_t reg, uint8_t val);
 
     bool QQVGA();
     bool saturation();
     bool frameControl(int hStart, int hStop, int vStart, int vStop);
     bool writeRegisters(const RegisterValue regValues[], uint8_t count);
-    void scan();
 
    public:
     bool reset();

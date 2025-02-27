@@ -7,25 +7,25 @@
 
 #include "Config.h"
 #include "Globals.h"
-// #include "OV7670.h"
+#include "OV7670.h"
 #include "WheelControl.h"
 #include "esp_log.h"
 
 websockets::WebsocketsClient wsClient;
-// HTTPClient client;
+HTTPClient client;
 
 INA219_WE ina;
 MPU6050 mpu;
-// OV7670 camera;
+OV7670 camera;
 WheelControl wheels;
 
 TaskHandle_t movementTaskHandle = NULL;
-// TaskHandle_t cameraTaskHandler = NULL;
+TaskHandle_t cameraTaskHandler = NULL;
 
 int16_t ax, ay, az, gx, gy, gz;
 float currentAngle = 0;
 
-// void takeImageTask(void *pvParameters);
+void takeImageTask(void *pvParameters);
 void sensorTask(void *pvParameters);
 void movementTask(void *pvParameters);
 
@@ -46,14 +46,14 @@ void onMessageCallback(websockets::WebsocketsMessage message) {
     if (message.data() == "start") {
         ESP_LOGI(mainLogTag, "Machine started");
         if (movementTaskHandle != NULL) {
+            vTaskResume(cameraTaskHandler);
             vTaskResume(movementTaskHandle);
-            // vTaskResume(cameraTaskHandler);
         }
     } else if (message.data() == "stop") {
         ESP_LOGI(mainLogTag, "Machine stopped");
         if (movementTaskHandle != NULL) {
             vTaskSuspend(movementTaskHandle);
-            // vTaskSuspend(cameraTaskHandler);
+            vTaskSuspend(cameraTaskHandler);
             wheels.stop();
         }
     } else if (message.data() == "suspend") {
@@ -109,56 +109,54 @@ void setup() {
     mpu.CalibrateGyro(20);
     mpu.CalibrateAccel(20);
     ESP_LOGI(mainLogTag, "MPU6050: Successful");
-    // if (!camera.init(CAM_VSYNC, CAM_HREF, CAM_XCLK, CAM_PCLK, CAM_D0, CAM_D1,
-    //                  CAM_D2, CAM_D3, CAM_D4, CAM_D5, CAM_D6, CAM_D7)) {
-    //     ESP_LOGE(mainLogTag, "Camera initialization failed!");
-    //     return;
-    // }
-    // ESP_LOGI(mainLogTag, "Camera: Successful");
+    if (!camera.init(CAM_VSYNC, CAM_HREF, CAM_XCLK, CAM_PCLK, CAM_D0, CAM_D1,
+                     CAM_D2, CAM_D3, CAM_D4, CAM_D5, CAM_D6, CAM_D7)) {
+        ESP_LOGE(mainLogTag, "Camera initialization failed!");
+        return;
+    }
+    ESP_LOGI(mainLogTag, "Camera: Successful");
     byte *echoPins = new byte[2]{FRONT_ECHO, SIDE_ECHO};
     HCSR04.begin(TRIG, echoPins, 2);
 
     xTaskCreatePinnedToCore(sensorTask, "sensor", 8192, NULL, 1, NULL, 0);
     xTaskCreatePinnedToCore(movementTask, "movement", 4096, NULL, 1,
                             &movementTaskHandle, 1);
-    // xTaskCreatePinnedToCore(takeImageTask, "camera", 98304, NULL, 1,
-    //                         &cameraTaskHandler, 0);
+    xTaskCreatePinnedToCore(takeImageTask, "camera", 98304, NULL, 1,
+                            &cameraTaskHandler, 0);
     if (movementTaskHandle == NULL) {
         ESP_LOGW(mainLogTag, "movement task: failed to create");
-    }
-    // else if (cameraTaskHandler == NULL) {
-    //     ESP_LOGW(mainLogTag, "camera task: failed to create");
-    // }
-    else {
-        // vTaskSuspend(cameraTaskHandler);
+    } else if (cameraTaskHandler == NULL) {
+        ESP_LOGW(mainLogTag, "camera task: failed to create");
+    } else {
+        vTaskSuspend(cameraTaskHandler);
         vTaskSuspend(movementTaskHandle);
         ESP_LOGD(mainLogTag, "Memory free: %d", ESP.getFreeHeap());
     }
 }
 
-// void takeImageAndSendPostRequest() {
-//     camera.oneFrame();
-//     client.begin(endpoint);
-//     int httpResponseCode =
-//         client.sendRequest("POST", camera.frame, camera.frameBytes);
-//     if (httpResponseCode > 0) {
-//         String payload = client.getString();
-//         ESP_LOGI(mainLogTag, "HTTP: [%d] %s", httpResponseCode, payload);
-//     } else {
-//         ESP_LOGW(mainLogTag, "HTTP-response error");
-//     }
-//     client.end();
-// }
+void takeImageAndSendPostRequest() {
+    camera.oneFrame();
+    client.begin(endpoint);
+    int httpResponseCode =
+        client.sendRequest("POST", camera.frame, camera.frameBytes);
+    if (httpResponseCode > 0) {
+        String payload = client.getString();
+        ESP_LOGI(mainLogTag, "HTTP: [%d] %s", httpResponseCode, payload);
+    } else {
+        ESP_LOGW(mainLogTag, "HTTP-response error");
+    }
+    client.end();
+}
 
-// void takeImageTask(void *pvParameters) {
-//     ESP_LOGD(mainLogTag, "[TIT]: started");
-//     while (true) {
-//         ESP_LOGD(mainLogTag, "[TIT]: iter");
-//         takeImageAndSendPostRequest();
-//         vTaskDelay(pdMS_TO_TICKS(1));
-//     }
-//     vTaskDelete(NULL);
-// }
+void takeImageTask(void *pvParameters) {
+    ESP_LOGD(mainLogTag, "[TIT]: started");
+    while (true) {
+        ESP_LOGD(mainLogTag, "[TIT]: iter");
+        takeImageAndSendPostRequest();
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+    vTaskDelete(NULL);
+}
 
 void sensorTask(void *pvParameters) {
     ESP_LOGD(mainLogTag, "[sensorTask]: started");
@@ -169,11 +167,11 @@ void sensorTask(void *pvParameters) {
     while (true) {
         busVoltage = ina.getBusVoltage_V();
         current_mA = ina.getCurrent_mA();
-        double *distances = HCSR04.measureDistanceCm();
+        // double *distances = HCSR04.measureDistanceCm();
 
         data = "vol:" + String(busVoltage) + ",cur:" + String(current_mA) +
-               ",ang:" + String(currentAngle) + ",df:" + String(distances[0]) +
-               ",ds:" + String(distances[1]);
+               ",ang:" + String(currentAngle) + ",df:" + String(1) +
+               ",ds:" + String(1);
 
         poolLoop += 1;
         if (wsClient.available()) {
@@ -209,7 +207,7 @@ void rotate(float angle) {
     while (true) {
         mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
         if (once) {
-            // wheels.left();
+            wheels.left();
             once = false;
         }
 
@@ -247,4 +245,4 @@ void movementTask(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
-void loop() {}
+void loop() { vTaskDelay(portMAX_DELAY); }
