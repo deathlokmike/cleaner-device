@@ -3,8 +3,8 @@
 
 enum wheel_speed : uint8_t {
     forward = 190,
-    backward = 128,
-    turn = forward - 125
+    backward = 130,
+    turn = forward - 120
 };
 
 class WheelControl {
@@ -13,7 +13,9 @@ class WheelControl {
     uint8_t in2;
     uint8_t in3;
     uint8_t in4;
+    uint8_t speed = -1;
 
+    void smoothControl(uint8_t gpio1, uint8_t gpio2, bool isStarting);
     void setup();
 
    public:
@@ -22,6 +24,5 @@ class WheelControl {
     void forward();
     void backward();
     void left();
-    void right();
     void stop();
 };
